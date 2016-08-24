@@ -1,0 +1,23 @@
+{% extends "layout.html" %}
+
+{% block title %}Upload File for import{% endblock %}
+{% import "bootstrap/wtf.html" as wtf %}
+
+{% block page_content %}
+
+<div class="slide"></div>
+
+<div class="slide-content">
+  <div class="container">
+    <h2>Upload XML Files</h2>
+      {{ wtf.quick_form(form) }}
+</div>
+</div>
+
+{% endblock %}
+
+</div>
+
+{% block scripts %}
+{{ super() }}
+{% endblock %}

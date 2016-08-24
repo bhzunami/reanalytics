@@ -1,0 +1,45 @@
+{% extends "layout.html" %}
+
+{% block title %}Import{% endblock %}
+
+{% block page_content %}
+
+<div class="slide"></div>
+
+<div class="slide-content">
+  <div class="container">
+    <h2>Imported XML Files</h2>
+    <a href="{{ url_for('xml_import.upload') }}" class="btn btn-primary pull-right">Upload xml</a>
+    <table class="table table-hover">
+        <thead>
+        <tr class="table-header">
+            <th>Name</th>
+            <th>Imported</th>
+            <th>Error Message</th>
+        </tr>
+        </thead>
+        <tbody>
+        {% for f in files %}
+        <tr data-file-id="{{ f.id }}" class="import-file {{ 'danger' if f.error else '' }}">
+            <td>{{ f.name }}</td>
+            <td class="vert-align">{{ f.imported }}</td>
+                <td>{{ f.error_message if f.error else '' }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+    </table>
+</div>
+</div>
+
+{% endblock %}
+
+</div>
+
+{% block scripts %}
+
+{{ super() }}
+<script src="{{ url_for('static', filename='js/scripts.js') }}"></script>
+
+
+
+{% endblock %}

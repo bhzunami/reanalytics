@@ -1,0 +1,61 @@
+This is a simple Template for a new Flask application
+
+Initalize DB with
+
+pyhton manage.py db upgrade.
+
+Create user:
+
+1. Create the Roles
+  python manage.py shell
+
+  >> Role.insert_roles()
+  >> for r in Role.query.all():
+  >>     print("Name {} and id: {}".format(r.name, r.id))
+
+2. Create Admin user
+ 
+  >> r = Role.query.filter_by(name="Administrator").first()
+
+  >> u = User(email="user@address.com", name="Test", password="test", role=r)
+  >> db.session.add(u)
+  >> db.session.commit()
+
+Add migration
+
+First you have to initalize the migration
+$ python manage.py db init
+
+After that you can add a new migration
+$ python manage.py db migrate -m "Commit message"
+
+Attention every Model who was created since last migration will be generated.
+If you want to seperate them, then do not include them in the __init__.py file in the folder models
+
+
+To avoid warning flask_script warnings change the code on venv/lib/flas_asstes.py Line 345
+import flask_script as script
+
+python manage.py db init
+python manage.py db migrate -m "Initail"
+python manage.py db upgrade
+
+python manage.py shell
+
+
+# Start all
+# Rabbit MQ
+rabbitmq-server start
+
+check: http://localhost:15672/#/
+
+rabbitmqctl stop
+
+# Celery
+celery worker -A manage.celery --loglevel=info -B
+
+# Flask
+python manage.py runserver
+
+
+http://stackoverflow.com/questions/13660118/running-a-flask-app-with-nginx-and-gunicorn

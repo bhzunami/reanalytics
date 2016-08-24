@@ -1,0 +1,13 @@
+.env
+venv/*
+*.pyc
+*.sqlite
+app/static/*.css
+.webassets-cache
+data
+reports
+celerybeat-schedule.db
+env.sh
+filter_fun.txt
+*.log
+.idea
