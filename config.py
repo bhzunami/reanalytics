@@ -18,7 +18,7 @@ class Config:
     STRONGEST_SITE_ID = 36
     DEFAULT_USER_EMAIL = os.environ.get('DEFAULT_USER_EMAIL')
     DEFAULT_USER_NAME = os.environ.get('DEFAULT_USER_NAME')
-    DEFAULT_USER_PASSWORD = os.environ.get('DEFAULT_PASSWORD')
+    DEFAULT_USER_PASSWORD = os.environ.get('DEFAULT_USER_PASSWORD')
 
     # FTP
     FTP_URL = os.environ.get('FTP_URL', 'server36.cyon.ch')
