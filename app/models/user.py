@@ -3,6 +3,7 @@
 
 from .. import db
 from .. import login_manager
+from flask import current_app
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_login import UserMixin
 from datetime import datetime
@@ -62,3 +63,14 @@ class User(UserMixin, db.Model):
 
     def verify_password(self, password):
         return check_password_hash(self.password_hash, password)
+
+    @staticmethod
+    def insert_default_user():
+        from . import Role
+        r = Role.query.filter_by(name="Administrator").first()
+        u = User(email=current_app.config['DEFAULT_USER_EMAIL'],
+                 name=current_app.config['DEFAULT_USER_NAME'],
+                 password=current_app.config['DEFAULT_USER_PASSWORD'],
+                 role=r)
+        db.session.add(u)
+        db.session.commit()

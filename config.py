@@ -11,15 +11,14 @@ class Config:
     # SQL Alchemy
     SQLALCHEMY_COMMIT_ON_TEARDOWN = True
     SQLALCHEMY_TRACK_MODIFICATIONS = False
-    DATABASE_USER = 'nicolas'
-    DATABASE_PASSWORD = ''
-    #SQLALCHEMY_DATABASE_URI = 'sqlite:///{}'.format(os.path.join(BASE_DIR, 'avisum.sqlite'))
-    SQLALCHEMY_DATABASE_URI = 'postgresql://localhost/reanalytics'
 
     # Avisum
     DATA_DIR = os.path.join(BASE_DIR, 'data')
     REPORT_DIR = os.path.join(BASE_DIR, 'reports')
     STRONGEST_SITE_ID = 36
+    DEFAULT_USER_EMAIL = os.environ.get('DEFAULT_USER_EMAIL')
+    DEFAULT_USER_NAME = os.environ.get('DEFAULT_USER_NAME')
+    DEFAULT_USER_PASSWORD = os.environ.get('DEFAULT_PASSWORD')
 
     # FTP
     FTP_URL = os.environ.get('FTP_URL', 'server36.cyon.ch')
@@ -33,14 +32,6 @@ class Config:
     SMTP_USER = os.environ.get('SMTP_USER')
     SMTP_PASSWORD = os.environ.get('SMTP_PASSWORD')
 
-    # Celery
-    # - - - - - - - - - - - - - - - - - - - - - - - -
-    BROKER_USER = os.environ.get('BROKER_USER')
-    BROKER_PASSWORD = os.environ.get('BROKER_PASSWORD')
-    BORKER_VIRTUALHOST = os.environ.get('BROKER_VIRTUALHOST')
-    BROKER_URL = 'amqp://{user}:{passwd}@localhost/{host}'.format(user=BROKER_USER,
-                                                                  passwd=BROKER_PASSWORD,
-                                                                  host=BORKER_VIRTUALHOST)
     CELERY_RESULT_BACKEND = 'rpc://'
 
     CELERY_TASK_SERIALIZER = 'json'
@@ -72,7 +63,20 @@ class Config:
 class DevelopmentConfig(Config):
     DEBUG = True
     ASSETS_DEBUG = True
-    
+    DATABASE_USER = 'nicolas'
+    DATABASE_PASSWORD = ''
+    # SQLALCHEMY_DATABASE_URI = 'sqlite:///{}'.format(os.path.join(BASE_DIR, 'avisum.sqlite'))
+    SQLALCHEMY_DATABASE_URI = 'postgresql://localhost/reanalytics'
+
+    # Celery
+    # - - - - - - - - - - - - - - - - - - - - - - - -
+    BROKER_USER = os.environ.get('BROKER_USER')
+    BROKER_PASSWORD = os.environ.get('BROKER_PASSWORD')
+    BORKER_VIRTUALHOST = os.environ.get('BROKER_VIRTUALHOST')
+    BROKER_URL = 'amqp://{user}:{passwd}@localhost/{host}'.format(user=BROKER_USER,
+                                                                  passwd=BROKER_PASSWORD,
+                                                                  host=BORKER_VIRTUALHOST)
+
 
 class TestConfig(Config):
     DEBUG = True
@@ -82,11 +86,25 @@ class TestConfig(Config):
 
 
 class ProductionConfig(Config):
-    # TODO: Use Postgres
+    # SQLALCHEMY
     ASSETS_DEBUG = False
-    SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL') or \
-        'sqlite:///' + os.path.join(basedir, 'data.sqlite')
+    DATABASE_USER = os.environ.get('DATABASE_ENV_POSTGRES_USER')
+    DATABASE_PASSWORD = os.environ.get('DATABASE_ENV_POSTGRES_PASSWORD')
+    DATABASE_HOST = os.environ.get('DATABASE_PORT_5432_TCP_ADDR')
+    SQLALCHEMY_DATABASE_URI = 'postgresql://{user}:{password}@{host}/reanalytics'.format(user=DATABASE_USER,
+                                                                                         password=DATABASE_PASSWORD,
+                                                                                         host=DATABASE_HOST)
 
+    # Celery
+    # - - - - - - - - - - - - - - - - - - - - - - - -
+    BROKER_USER = os.environ.get('RABBIT_ENV_RABBITMQ_DEFAULT_USER')
+    BROKER_PASSWORD = os.environ.get('RABBIT_ENV_RABBITMQ_DEFAULT_PASS')
+    BORKER_VIRTUALHOST = os.environ.get('RABBIT_ENV_RABBITMQ_DEFAULT_VHOST')
+    BORKER_HOST = os.environ.get('RABBIT_1_PORT_25672_TCP_ADDR')
+    BROKER_URL = 'amqp://{user}:{passwd}@{host}/{vhost}'.format(user=BROKER_USER,
+                                                                passwd=BROKER_PASSWORD,
+                                                                host=BORKER_HOST,
+                                                                vhost=BORKER_VIRTUALHOST)
 
 config = {
     'development': DevelopmentConfig,

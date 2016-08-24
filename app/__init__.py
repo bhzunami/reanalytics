@@ -30,19 +30,12 @@ login_manager.login_view = 'auth.login'        # prefix of blueprint name
 def create_file_structure(data_dir, report_dir):
     """
     Check if the data dir exists.
-    If the folder 'data' does not exists ask user to create on.
-    If answer is not y or Y we can terminate
+    If the folder 'data' and 'report' does not exists create one.
     """
     if not os.path.exists(data_dir):
-        answer = input("Data directory {} does not exists. Should one be created (y or n)?".format(data_dir)).lower()
-        if answer != "y":
-            sys.exit(1)
         os.mkdir(data_dir)
 
     if not os.path.exists(os.path.join(report_dir)):
-        answer = input("Report directory {} does not exists. Should one be created (y or n)?".format(report_dir)).lower()
-        if answer != "y":
-            sys.exit(1)
         os.mkdir(report_dir)
 
 
@@ -95,7 +88,7 @@ def create_app(config_name):
 
     return app
 
-
+# CELERY
 def create_celery(app):
     celery = Celery('celery', include=['celery_module.tasks'])
     celery.conf.update(app.config)
