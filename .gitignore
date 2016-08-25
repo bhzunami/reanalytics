@@ -1,7 +1,7 @@
 *.sqlite
 app/static/*.css
 .webassets-cache
-data
+data/*.xml
 reports
 env.sh
 filter_fun.txt

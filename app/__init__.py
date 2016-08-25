@@ -45,13 +45,11 @@ def create_app(config_name):
     app.config.from_object(config[config_name])
     config[config_name].init_app(app)
 
-    app.clients = {}
-
     # Create data structure
     create_file_structure(app.config['DATA_DIR'], app.config['REPORT_DIR'])
 
     # Logging
-    handler = RotatingFileHandler('reanalyticss.log', maxBytes=10000, backupCount=1)
+    handler = RotatingFileHandler('./logs/flask_reanalyticss.log', maxBytes=10000, backupCount=1)
     formatter = logging.Formatter("%(asctime)s | %(pathname)s:%(lineno)d | %(funcName)s | %(levelname)s | %(message)s ")
     # formatter = logging.Formatter( "%(asctime)s | %(funcName)s | %(levelname)s | %(message)s ")
     handler.setFormatter(formatter)
@@ -68,10 +66,10 @@ def create_app(config_name):
     assets.init_app(app)
     # paths are  to app/static/ directory.
     scss = Bundle('../scss/style.scss', filters='pyscss', output='style.css')
-    try:
-        assets.register('scss_all', scss)
-    except Exception:
-        pass
+#    try:
+    assets.register('scss_all', scss)
+#    except Exception:
+#        print("********************")
 
     # Configure the blueprints
     from .controller.main import main as main_blueprint

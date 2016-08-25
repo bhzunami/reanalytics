@@ -7,11 +7,9 @@
 <script src="{{ url_for('static', filename='js/jquery.min.js') }}"></script>
 <script src="{{ url_for('static', filename='js/socket.io.min.js') }}"></script>
 <script src="{{ url_for('static', filename='js/bootstrap.min.js') }}"></script>
+
 {% assets "scss_all" %}
 <link rel="stylesheet" type="text/css" href="{{ ASSET_URL }}">
-
-
-
 {% endassets %}
 
 <link rel="shortcut icon" href="{{ url_for('static', filename = 'favicon.ico') }}"

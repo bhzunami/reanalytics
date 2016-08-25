@@ -63,19 +63,19 @@ class Config:
 class DevelopmentConfig(Config):
     DEBUG = True
     ASSETS_DEBUG = True
-    DATABASE_USER = 'nicolas'
+    DATABASE_USER = os.environ.get('DATABASE_USER', 'nicolas')
     DATABASE_PASSWORD = ''
     # SQLALCHEMY_DATABASE_URI = 'sqlite:///{}'.format(os.path.join(BASE_DIR, 'avisum.sqlite'))
-    SQLALCHEMY_DATABASE_URI = 'postgresql://localhost/reanalytics'
+    SQLALCHEMY_DATABASE_URI = 'postgresql://{}:{}@localhost/reanalytics'.format(DATABASE_USER, DATABASE_PASSWORD)
 
     # Celery
     # - - - - - - - - - - - - - - - - - - - - - - - -
     BROKER_USER = os.environ.get('BROKER_USER')
     BROKER_PASSWORD = os.environ.get('BROKER_PASSWORD')
-    BORKER_VIRTUALHOST = os.environ.get('BROKER_VIRTUALHOST')
+    BROKER_VIRTUALHOST = os.environ.get('BROKER_VIRTUALHOST')
     BROKER_URL = 'amqp://{user}:{passwd}@localhost/{host}'.format(user=BROKER_USER,
                                                                   passwd=BROKER_PASSWORD,
-                                                                  host=BORKER_VIRTUALHOST)
+                                                                  host=BROKER_VIRTUALHOST)
 
 
 class TestConfig(Config):

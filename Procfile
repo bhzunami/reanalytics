@@ -1,1 +1,1 @@
-gunicorn --worker-class eventlet -w 1 manage:app
+gunicorn --worker-class eventlet -b 0.0.0.0:8000 -w 1 manage:app

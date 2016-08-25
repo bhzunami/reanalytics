@@ -10,6 +10,7 @@ from app import create_app, create_celery, db, socketio
 from app.models import User, Role, Permission, Location, Canton, District, Ad
 from flask_script import Manager, Shell, Server
 from flask_migrate import Migrate, MigrateCommand
+from flask_assets import ManageAssets
 
 app = create_app(os.getenv('FLASK_CONFIG') or 'default')
 celery = create_celery(app)
@@ -33,10 +34,11 @@ def make_shell_context():
 manager.add_command("shell", Shell(make_context=make_shell_context))
 manager.add_command('db', MigrateCommand)
 manager.add_command("runserver", Server(extra_files=["app/scss/*.scss"]))
+manager.add_command("assets", ManageAssets())
 
 
 @manager.command
-def initalize():
+def initialize():
     from flask_migrate import upgrade
     from app.models import Role, Ad
     upgrade()
