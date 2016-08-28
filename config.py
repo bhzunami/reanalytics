@@ -15,6 +15,7 @@ class Config:
     # Avisum
     DATA_DIR = os.path.join(BASE_DIR, 'data')
     REPORT_DIR = os.path.join(BASE_DIR, 'reports')
+    LOG_DIR = os.path.join(BASE_DIR, 'logs')
     STRONGEST_SITE_ID = 36
     DEFAULT_USER_EMAIL = os.environ.get('DEFAULT_USER_EMAIL')
     DEFAULT_USER_NAME = os.environ.get('DEFAULT_USER_NAME')

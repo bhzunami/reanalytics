@@ -48,6 +48,7 @@ class Ad(UserMixin, db.Model):
         from . import Location, Time
         import progressbar
         xml_file = 'data/initial.xml'
+        #xml_file = 'data/shortVersion.xml'
         tree = ET.parse(xml_file)
         root = tree.getroot()
         current_app.logger.info("Try to insert {} entries".format(len(root)))

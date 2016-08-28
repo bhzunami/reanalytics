@@ -59,3 +59,4 @@ python manage.py runserver
 
 
 http://stackoverflow.com/questions/13660118/running-a-flask-app-with-nginx-and-gunicorn
+http://www.jeffwidman.com/blog/847/using-sqlalchemy-to-create-and-manage-postgresql-materialized-views/

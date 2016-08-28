@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-from flask import Flask, render_template
+from flask import Flask
 from flask_assets import Environment, Bundle
 from flask_bootstrap import Bootstrap
 from flask_login import LoginManager
@@ -11,7 +11,6 @@ from flask_socketio import SocketIO
 
 from config import config
 import os
-import sys
 from celery import Celery
 
 import logging
@@ -27,7 +26,7 @@ login_manager.session_protection = 'strong'    # basic or none
 login_manager.login_view = 'auth.login'        # prefix of blueprint name
 
 
-def create_file_structure(data_dir, report_dir):
+def create_file_structure(data_dir, report_dir, log_dir):
     """
     Check if the data dir exists.
     If the folder 'data' and 'report' does not exists create one.
@@ -38,6 +37,9 @@ def create_file_structure(data_dir, report_dir):
     if not os.path.exists(os.path.join(report_dir)):
         os.mkdir(report_dir)
 
+    if not os.path.exists(os.path.join(log_dir)):
+        os.mkdir(log_dir)
+
 
 def create_app(config_name):
     app = Flask(__name__)
@@ -46,10 +48,14 @@ def create_app(config_name):
     config[config_name].init_app(app)
 
     # Create data structure
-    create_file_structure(app.config['DATA_DIR'], app.config['REPORT_DIR'])
+    create_file_structure(app.config['DATA_DIR'],
+                          app.config['REPORT_DIR'],
+                          app.config['LOG_DIR'])
 
     # Logging
-    handler = RotatingFileHandler('./logs/flask_reanalyticss.log', maxBytes=10000, backupCount=1)
+    handler = RotatingFileHandler('{}/flask_reanalyticss.log'.format(app.config['LOG_DIR']),
+                                  maxBytes=10000,
+                                  backupCount=5)
     formatter = logging.Formatter("%(asctime)s | %(pathname)s:%(lineno)d | %(funcName)s | %(levelname)s | %(message)s ")
     # formatter = logging.Formatter( "%(asctime)s | %(funcName)s | %(levelname)s | %(message)s ")
     handler.setFormatter(formatter)
@@ -66,10 +72,10 @@ def create_app(config_name):
     assets.init_app(app)
     # paths are  to app/static/ directory.
     scss = Bundle('../scss/style.scss', filters='pyscss', output='style.css')
-#    try:
-    assets.register('scss_all', scss)
-#    except Exception:
-#        print("********************")
+    try:
+        assets.register('scss_all', scss)
+    except Exception:
+        pass
 
     # Configure the blueprints
     from .controller.main import main as main_blueprint
@@ -84,6 +90,7 @@ def create_app(config_name):
     from .controller.auth import auth as auth_blueprint
     app.register_blueprint(auth_blueprint, url_prefix='/auth')
 
+
     return app
 
 # CELERY
@@ -92,7 +99,6 @@ def create_celery(app):
     celery.conf.update(app.config)
 
     TaskBase = celery.Task
-
     """
     Create
     """

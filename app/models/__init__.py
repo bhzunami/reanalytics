@@ -8,3 +8,5 @@ from .ad import Ad
 from .time import Time
 from .location import Location, Canton, District
 from .file import File
+from .report import Report
+from .analytic import AnalyticView
