@@ -4,18 +4,20 @@
 from flask import render_template, jsonify, current_app, request, redirect, url_for
 from werkzeug.utils import secure_filename
 import os
-from flask_login import current_user
+from flask_login import current_user, login_required
 from . import xml_import
 from .forms import UploadForm
 from ...models import File, User
 from ... import db
 
+@login_required
 @xml_import.route('/', methods=['GET'])
 def get_imported_files():
     files = File.query.all()
     return render_template('xml_import/main.html', files=files)
 
 
+@login_required
 @xml_import.route('/upload', methods=['GET', 'POST'])
 def upload():
     form = UploadForm()

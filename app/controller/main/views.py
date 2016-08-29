@@ -4,11 +4,12 @@
 from flask import render_template, jsonify, current_app, request
 from werkzeug.utils import secure_filename
 
-from flask_login import current_user
+from flask_login import current_user, login_required
 from . import main
 from ...models import File, User
 from ... import db
 
+@login_required
 @main.route('/', methods=['GET'])
 def index():
     current_app.logger.info("START PAGE")

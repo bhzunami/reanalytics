@@ -207,7 +207,5 @@ def createReport(plz):
     """
     Create Report for this place
     """
-    from ftplib import FTP
-    from datetime import datetime
-    from app.models import File
     from app import db
+
