@@ -9,8 +9,8 @@ from . import main
 from ...models import File, User
 from ... import db
 
-@login_required
 @main.route('/', methods=['GET'])
+@login_required
 def index():
     current_app.logger.info("START PAGE")
     return render_template('index.html', user=current_user)

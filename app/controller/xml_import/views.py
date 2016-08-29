@@ -10,15 +10,15 @@ from .forms import UploadForm
 from ...models import File, User
 from ... import db
 
-@login_required
 @xml_import.route('/', methods=['GET'])
+@login_required
 def get_imported_files():
     files = File.query.all()
     return render_template('xml_import/main.html', files=files)
 
 
-@login_required
 @xml_import.route('/upload', methods=['GET', 'POST'])
+@login_required
 def upload():
     form = UploadForm()
     if form.validate_on_submit():

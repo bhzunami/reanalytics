@@ -254,8 +254,8 @@ def create_report(plz, type, year):
 
 
 
-@login_required
 @report.route('/', methods=['GET', 'POST'])
+@login_required
 def index():
     current_app.logger.info("Report PAGE")
 
