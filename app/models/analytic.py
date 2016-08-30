@@ -54,5 +54,7 @@ db.Index('analytic_view_id_idx', AnalyticView.id, unique=True)
 db.Index('analytic_view_plz_idx', AnalyticView.plz, unique=False)
 db.Index('analytic_view_canton_nr_idx', AnalyticView.canton_nr, unique=False)
 db.Index('analytic_view_district_nr_idx', AnalyticView.district_nr, unique=False)
+db.Index('analytic_view_cyear_idx', AnalyticView.cyear, unique=False)
+db.Index('analytic_view_eyear_idx', AnalyticView.eyear, unique=False)
 
 
