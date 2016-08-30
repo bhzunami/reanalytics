@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-from flask import render_template, current_app, redirect, url_for
+from flask import render_template, current_app, redirect, url_for, send_from_directory
 from flask_login import current_user, login_required
 import datetime
 from . import report
@@ -12,7 +12,7 @@ import pandas as pd
 import xlsxwriter
 import os
 
-def create_report(plz, type, year):
+def create_report(plz, type, year, report_id):
     """
     todo: If I have time make it clean. Ugly version
     :param plz:
@@ -20,9 +20,10 @@ def create_report(plz, type, year):
     :param year:
     :return:
     """
-    workbook = xlsxwriter.Workbook(os.path.join(current_app.config['REPORT_DIR'],
-                                                'Report_{}-{}.xls'.format(plz, datetime.date.today())),
-                                   {'nan_inf_to_errors': True})
+
+    file_name = os.path.join(current_app.config['REPORT_DIR'],
+                                                'Report_{}.xls'.format(report_id))
+    workbook = xlsxwriter.Workbook(file_name, {'nan_inf_to_errors': True})
 
     worksheet = workbook.add_worksheet('Benchmarks')
 
@@ -48,38 +49,10 @@ def create_report(plz, type, year):
 
     # Replace all rooms which are greater as 6
     df_locality.loc[df_locality.rooms > 6] = 6
-    #df_locality.rooms[df_locality.rooms > 6] = 6
-
-    # Set the first data
-    worksheet.write('A1', 'Report for {} {}'.format(plz, location.locality), h1)
-
-    worksheet.write('A3',
-                    'Im Jahr {} wurden in {} insgesamt {} Wohnungen ausgeschriebn'.format(year,
-                                                                                        location.locality,
-                                                                                          df_locality.rooms.count()))
-
-    worksheet.write('A4', year)
-    worksheet.write('B4', location.plz)
-    worksheet.write('C4', location.locality)
-    worksheet.write('D4', df_locality.rooms.count())
-    count_locality = df_locality.rooms.value_counts()
-
-    # ======================================================
-    # Anzahl
-    # ======================================================
-    # - - - - - - - - - - - - - - - - - - - - - - - - -
-    # BENCHMARK 1
-    # - - - - - - - - - - - - - - - - - - - - - - - - -
-    worksheet.write('A6', 'Benchmark 1: {} {} '.format(plz, location.locality), h3)
-    index = 7
-    for i, e in enumerate(count_locality):
-        #                row   col
-        worksheet.write(index, i, i)
-        worksheet.write(index + 1, i, count_locality.get(i, 0))
-        worksheet.write(index + 2, i, count_locality.get(i, 0) / count_locality.sum(), percent)
-
-    # Percentage
-    # count[0] / count.sum()
+    df_locality['price_per_m'] = df_locality.price / df_locality.area.replace({ 0 : 1 })
+    df_locality['price_per_room'] = df_locality.price / df_locality.rooms.replace({ 0 : 1 })
+    # Group by room
+    locality_grouped = df_locality.groupby('rooms')
 
     # DISTRICT
     df_districts = pd.read_sql_query(
@@ -92,104 +65,130 @@ def create_report(plz, type, year):
         , db.session.bind)
 
     df_districts.loc[df_districts.rooms > 6] = 6
-
-    count_district = df_districts.rooms.value_counts()
-    # - - - - - - - - - - - - - - - - - - - - - - - - -
-    # BENCHMARK 2
-    # - - - - - - - - - - - - - - - - - - - - - - - - -
-    worksheet.write('A12', 'Benchmark 2: {} '.format(location.district), h3)
-    index = 13
-    for i, e in enumerate(count_district):
-        #                row   col
-        worksheet.write(index, i, i)
-        worksheet.write(index + 1, i, count_district.get(i, 0))
-        worksheet.write(index + 2, i, count_district.get(i, 0) / count_district.sum(), percent)
+    df_districts['price_per_m'] = df_districts.price / df_districts.area.replace({0: 1})
+    df_districts['price_per_room'] = df_districts.price / df_districts.rooms.replace({0: 1})
+    # Group by room
+    district_grouped = df_districts.groupby('rooms')
 
     # CANTON
-    df_canton = pd.read_sql_query(
-            db.select([AnalyticView.rooms,
-                       AnalyticView.price,
-                       AnalyticView.area,])
-                .where(AnalyticView.canton_nr == location.canton_nr)
-                .where(AnalyticView.type == type)
-                .where(AnalyticView.cyear == year)
-            , db.session.bind)
+    df_cantons = pd.read_sql_query(
+        db.select([AnalyticView.rooms,
+                   AnalyticView.price,
+                   AnalyticView.area, ])
+            .where(AnalyticView.canton_nr == location.canton_nr)
+            .where(AnalyticView.type == type)
+            .where(AnalyticView.cyear == year)
+        , db.session.bind)
 
-    df_canton.loc[df_canton.rooms > 6] = 6
+    df_cantons.loc[df_cantons.rooms > 6] = 6
+    df_cantons['price_per_m'] = df_cantons.price / df_cantons.area.replace({0: 1})
+    df_cantons['price_per_room'] = df_cantons.price / df_cantons.rooms.replace({0: 1})
+    # Group by room
+    canton_grouped = df_cantons.groupby('rooms')
 
-    count_canton = df_canton.rooms.value_counts()
 
+    # Set the first data
+    #               2  A
+    worksheet.write(1, 0, 'Report for {} {}'.format(plz, location.locality), h1)
+
+    worksheet.write(2, 0,
+                    'Im Jahr {} wurden in {} insgesamt {} Wohnungen ausgeschrieben'.format(year,
+                                                                                        location.locality,
+                                                                                          df_locality.rooms.count()))
+    worksheet.write(3, 0, year)
+    worksheet.write(3, 1, location.plz)
+    worksheet.write(3, 2, location.locality)
+    worksheet.write(3, 3, df_locality.rooms.count())
+
+    # ======================================================
+    # Anzahl
+    # ======================================================
+
+    # BENCHMARK 1
     # - - - - - - - - - - - - - - - - - - - - - - - - -
+    worksheet.write(5, 0, 'Benchmark 1: {} {} '.format(plz, location.locality), h3)
+    data = df_locality.rooms.value_counts()
+    index = 6
+    for i in range(df_locality.rooms.nunique()):
+        worksheet.write(index, i, i)
+        worksheet.write(index + 1, i, data.get(i, 0))
+        worksheet.write(index + 2, i, data.get(i, 0) / data.sum(),
+                        percent)
+
+    # BENCHMARK 2
+    # - - - - - - - - - - - - - - - - - - - - - - - - -
+    worksheet.write(10, 0, 'Benchmark 2: {} '.format(location.district), h3)
+    data = df_districts.rooms.value_counts()
+    index = 11
+    for i in range(df_districts.rooms.nunique()):
+        worksheet.write(index, i, i)
+        worksheet.write(index + 1, i, data.get(i, 0))
+        worksheet.write(index + 2, i, data.get(i, 0) / data.sum(),
+                        percent)
+
     # BENCHMARK 3
     # - - - - - - - - - - - - - - - - - - - - - - - - -
-    worksheet.write('A18', 'Benchmark 3: {} '.format(location.canton), h3)
-    index = 19
-    for i, e in enumerate(count_canton):
-        #                row   col
+    worksheet.write(15, 0, 'Benchmark 3: {} '.format(location.canton), h3)
+    data = df_cantons.rooms.value_counts()
+    index = 16
+    for i in range(df_cantons.rooms.nunique()):
         worksheet.write(index, i, i)
-        worksheet.write(index + 1, i, count_canton.get(i, 0))
-        worksheet.write(index + 2, i, count_canton.get(i, 0) / count_canton.sum(), percent)
+        worksheet.write(index + 1, i, data.get(i, 0))
+        worksheet.write(index + 2, i, data.get(i, 0) / data.sum(),
+                        percent)
 
+    #
     # ======================================================
     # Grösse m^2
     # ======================================================
-    worksheet.write('A25', 'Grösse m^2', h2)
+    worksheet.write(20, 0, 'Grösse m^2', h2)
     # - - - - - - - - - - - - - - - - - - - - - - - - -
     # BENCHMARK 1
     # - - - - - - - - - - - - - - - - - - - - - - - - -
-    worksheet.write('A27', 'Benchmark 1: {} {} '.format(plz, location.locality), h3)
-    locality_grouped = df_locality.groupby('rooms')
+    worksheet.write(22, 0, 'Benchmark 1: {} {} '.format(plz, location.locality), h3)
     data = locality_grouped.area.quantile([.25, .5, .75])
-    index = 28
-    for i, e in enumerate(count_district):
-        #                row   col
+    index = 23
+    for i in range(df_locality.rooms.nunique()):
         worksheet.write(index, i, i)
-        worksheet.write(index + 1, i, data.get(i, 0)[0.25])
-        worksheet.write(index + 2, i, data.get(i, 0)[0.5])
-        worksheet.write(index + 3, i, data.get(i, 0)[0.75])
+        worksheet.write(index + 1, i, data.get(i, 0).get(0.25, 0))
+        worksheet.write(index + 2, i, data.get(i, 0).get(0.5, 0))
+        worksheet.write(index + 3, i, data.get(i, 0).get(0.75))
 
     # - - - - - - - - - - - - - - - - - - - - - - - - -
     # BENCHMARK 2
     # - - - - - - - - - - - - - - - - - - - - - - - - -
-    worksheet.write('A34', 'Benchmark 2: {} '.format(location.district), h3)
-    district_grouped = df_districts.groupby('rooms')
+    worksheet.write(28, 0, 'Benchmark 2: {} '.format(location.district), h3)
     data = district_grouped.area.quantile([.25, .5, .75])
-    index = 35
-    for i, e in enumerate(count_district):
-        #                row   col
+    index = 29
+    for i in range(df_districts.rooms.nunique()):
         worksheet.write(index, i, i)
-        worksheet.write(index + 1, i, data.get(i, 0)[0.25])
-        worksheet.write(index + 2, i, data.get(i, 0)[0.5])
-        worksheet.write(index + 3, i, data.get(i, 0)[0.75])
+        worksheet.write(index + 1, i, data.get(i, 0).get(0.25, 0))
+        worksheet.write(index + 2, i, data.get(i, 0).get(0.5, 0))
+        worksheet.write(index + 3, i, data.get(i, 0).get(0.75))
 
     # - - - - - - - - - - - - - - - - - - - - - - - - -
     # BENCHMARK 3
     # - - - - - - - - - - - - - - - - - - - - - - - - -
-    worksheet.write('A41', 'Benchmark 3: {} '.format(location.canton), h3)
-    canton_grouped = df_canton.groupby('rooms')
+    worksheet.write(34, 0, 'Benchmark 3: {} '.format(location.canton), h3)
     data = canton_grouped.area.quantile([.25, .5, .75])
-    index = 42
-    for i, e in enumerate(count_district):
-        #                row   col
+    index = 35
+    for i in range(df_cantons.rooms.nunique()):
         worksheet.write(index, i, i)
-        worksheet.write(index + 1, i, data.get(i, 0)[0.25])
-        worksheet.write(index + 2, i, data.get(i, 0)[0.5])
-        worksheet.write(index + 3, i, data.get(i, 0)[0.75])
+        worksheet.write(index + 1, i, data.get(i, 0).get(0.25, 0))
+        worksheet.write(index + 2, i, data.get(i, 0).get(0.5, 0))
+        worksheet.write(index + 3, i, data.get(i, 0).get(0.75))
 
     # ======================================================
     # PREIS PER M^2
     # ======================================================
-    worksheet.write('A47', 'Preis pro m^2', h2)
+    worksheet.write(40, 0, 'Preis pro m^2', h2)
     # - - - - - - - - - - - - - - - - - - - - - - - - -
     # BENCHMARK 1
     # - - - - - - - - - - - - - - - - - - - - - - - - -
-    worksheet.write('A48', 'Benchmark 1 {} {}'.format(plz, location.locality), h3)
-    df_locality['price_per_m'] = df_locality.price / df_locality.area
-    locality_grouped = df_locality.groupby('rooms')
+    worksheet.write(42, 0, 'Benchmark 1 {} {}'.format(plz, location.locality), h3)
     data = locality_grouped.price_per_m.quantile([.25, .5, .75])
-    index = 49
-    for i, e in enumerate(locality_grouped):
-        #                row   col
+    index = 43
+    for i in range(df_locality.rooms.nunique()):
         worksheet.write(index, i, i)
         worksheet.write(index + 1, i, data.get(i, 0)[0.25])
         worksheet.write(index + 2, i, data.get(i, 0)[0.5])
@@ -197,13 +196,10 @@ def create_report(plz, type, year):
     # - - - - - - - - - - - - - - - - - - - - - - - - -
     # Benchmark 2
     # - - - - - - - - - - - - - - - - - - - - - - - - -
-    worksheet.write('A55', 'Benchmark 2 {}'.format(location.district), h3)
-    df_districts['price_per_m'] = df_districts.price / df_districts.area
-    district_grouped = df_districts.groupby('rooms')
+    worksheet.write(48, 0, 'Benchmark 2 {}'.format(location.district), h3)
     data = district_grouped.price_per_m.quantile([.25, .5, .75])
-    index = 56
-    for i, e in enumerate(district_grouped):
-        #                row   col
+    index = 47
+    for i in range(df_districts.rooms.nunique()):
         worksheet.write(index, i, i)
         worksheet.write(index + 1, i, data.get(i, 0)[0.25])
         worksheet.write(index + 2, i, data.get(i, 0)[0.5])
@@ -211,46 +207,97 @@ def create_report(plz, type, year):
     # - - - - - - - - - - - - - - - - - - - - - - - - -
     # Benchmark 3
     # - - - - - - - - - - - - - - - - - - - - - - - - -
-    worksheet.write('A61', 'Benchmark 3 {}'.format(location.canton), h3)
-    df_canton['price_per_m'] = df_canton.price / df_canton.area
-    canton_grouped = df_canton.groupby('rooms')
+    worksheet.write(52, 0, 'Benchmark 3 {}'.format(location.canton), h3)
     data = canton_grouped.price_per_m.quantile([.25, .5, .75])
-    index = 62
-    for i, e in enumerate(canton_grouped):
-        #                row   col
+    index = 53
+    for i in range(df_cantons.rooms.nunique()):
         worksheet.write(index, i, i)
         worksheet.write(index + 1, i, data.get(i, 0)[0.25])
         worksheet.write(index + 2, i, data.get(i, 0)[0.5])
         worksheet.write(index + 3, i, data.get(i, 0)[0.75])
 
     # ======================================================
-    #
+    # Preis per room
     # ======================================================
-    worksheet.write('A70', 'Preis pro Zimmer', h2)
-    worksheet.write('A72', 'Benchmark 1 {} {}'.format(plz, location.locality), h3)
-    df_locality['price_per_room'] = df_locality.price / df_locality.rooms
-    locality_grouped = df_locality.groupby('rooms')
+    worksheet.write(58, 0, 'Preis pro Zimmer', h2)
+    worksheet.write(60, 0, 'Benchmark 1 {} {}'.format(plz, location.locality), h3)
     data = locality_grouped.price_per_room.quantile([.25, .5, .75])
-    index = 73
-    for i, e in enumerate(locality_grouped):
-        #                row   col
+    index = 61
+    for i in range(df_locality.rooms.nunique()):
         worksheet.write(index, i, i)
         worksheet.write(index + 1, i, data.get(i, 0)[0.25])
         worksheet.write(index + 2, i, data.get(i, 0)[0.5])
         worksheet.write(index + 3, i, data.get(i, 0)[0.75])
 
+    # - - - - - - - - - - - - - - - - - - - - - - - - -
+    # Benchmark 2
+    # - - - - - - - - - - - - - - - - - - - - - - - - -
+    worksheet.write(66, 0, 'Benchmark 2 {}'.format(location.district), h3)
+    data = district_grouped.price_per_room.quantile([.25, .5, .75])
+    index = 67
+    for i in range(df_districts.rooms.nunique()):
+        worksheet.write(index, i, i)
+        worksheet.write(index + 1, i, data.get(i, 0)[0.25])
+        worksheet.write(index + 2, i, data.get(i, 0)[0.5])
+        worksheet.write(index + 3, i, data.get(i, 0)[0.75])
 
+    # - - - - - - - - - - - - - - - - - - - - - - - - -
+    # Benchmark 3
+    # - - - - - - - - - - - - - - - - - - - - - - - - -
+    worksheet.write(72, 0, 'Benchmark 3 {}'.format(location.canton), h3)
+    data = canton_grouped.price_per_room.quantile([.25, .5, .75])
+    index = 73
+    for i in range(df_cantons.rooms.nunique()):
+        worksheet.write(index, i, i)
+        worksheet.write(index + 1, i, data.get(i, 0)[0.25])
+        worksheet.write(index + 2, i, data.get(i, 0)[0.5])
+        worksheet.write(index + 3, i, data.get(i, 0)[0.75])
 
+    # ======================================================
+    # Preis pro Kategorie
+    # ======================================================
+    worksheet.write(78, 0, 'Preis pro Preiskategorie', h2)
+    worksheet.write(80, 0, 'Benchmark 1 {} {}'.format(plz, location.locality), h3)
+    header = ['<1000', '1000 - 1499', '1500 - 2999', '>3000']
+    data = []
+    data.append(df_locality[df_locality.price < 1000 ].price.quantile([.25, .5, .75]))
+    data.append(df_locality[(df_locality.price > 1000) & (df_locality.price < 1500)].price.quantile([.25, .5, .75]))
+    data.append(df_locality[(df_locality.price > 1500) & (df_locality.price < 3000)].price.quantile([.25, .5, .75]))
+    data.append(df_locality[df_locality.price > 2999].price.quantile([.25, .5, .75]))
+    index = 81
+    for i in range(len(data)):
+        worksheet.write(index, i, header[i])
+        worksheet.write(index + 1, i, data[i][0.25])
+        worksheet.write(index + 2, i, data[i][0.5])
+        worksheet.write(index + 3, i, data[i][0.75])
 
+    worksheet.write(86, 0, 'Benchmark 2 {}'.format(location.district), h3)
+    data = []
+    data.append(df_districts[df_districts.price < 1000].price.quantile([.25, .5, .75]))
+    data.append(df_districts[(df_districts.price > 1000) & (df_districts.price < 1500)].price.quantile([.25, .5, .75]))
+    data.append(df_districts[(df_districts.price > 1500) & (df_districts.price < 3000)].price.quantile([.25, .5, .75]))
+    data.append(df_districts[df_districts.price > 2999].price.quantile([.25, .5, .75]))
+    index = 87
+    for i in range(len(data)):
+        worksheet.write(index, i, header[i])
+        worksheet.write(index + 1, i, data[i][0.25])
+        worksheet.write(index + 2, i, data[i][0.5])
+        worksheet.write(index + 3, i, data[i][0.75])
 
-    # locationp = df.groupby('rooms')
-    # p.price.quantile([.25, .5, .75])
+    worksheet.write(92, 0, 'Benchmark 3 {}'.format(location.canton), h3)
+    data = []
+    data.append(df_cantons[df_cantons.price < 1000].price.quantile([.25, .5, .75]))
+    data.append(df_cantons[(df_cantons.price > 1000) & (df_cantons.price < 1500)].price.quantile([.25, .5, .75]))
+    data.append(df_cantons[(df_cantons.price > 1500) & (df_cantons.price < 3000)].price.quantile([.25, .5, .75]))
+    data.append(df_cantons[df_cantons.price > 2999].price.quantile([.25, .5, .75]))
+    index = 93
+    for i in range(len(data)):
+        worksheet.write(index, i, header[i])
+        worksheet.write(index + 1, i, data[i][0.25])
+        worksheet.write(index + 2, i, data[i][0.5])
+        worksheet.write(index + 3, i, data[i][0.75])
 
-    #import json
-    #print(json.dumps(data, indent=4))
-
-    #ads_district = AnalyticView.query.filter_by(district_nr=district_nr, type=type, cyear=year).all()
-    #ads_canton = AnalyticView.query.filter_by(canton_nr=canton_nr, type=type, cyear=year).all()
+    workbook.close()
 
 
 
@@ -266,11 +313,14 @@ def index():
                         company_name=form.company_name.data,
                         notes=form.notes.data,
                         created=datetime.datetime.today())
+        db.session.add(report)
+        db.session.commit()
 
-        create_report(form.plz.data, 'Wohnung', 2016)
+        create_report(form.plz.data, 'Wohnung', 2016, report.id)
 
-        current_app.logger.info("Report {}".format(report))
-        return redirect(url_for('.index', form=None))
+        return send_from_directory(current_app.config['REPORT_DIR'],
+                                   'Report_{}.xls'.format(report.id),
+                                   as_attachment=True)
 
     return render_template('report/main.html', form=form)
 

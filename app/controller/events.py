@@ -29,7 +29,6 @@ def events_connect():
 
     # User made reload
     current_user.websocket_id = request.sid
-    current_app.clients[current_user.id] = current_user.websocket_id
     current_app.logger.info("New socket id {} for user user {}".format(current_user.name,
                                                                        current_user.websocket_id))
     db.session.add(current_user)
