@@ -17,7 +17,6 @@ class Report(UserMixin, db.Model):
     created = db.Column(db.Date)
     plz = db.Column(db.Integer)
 
-
     def __repr__(self):
         return "<(Report: id {}, copany name {}, notes {} created {} plz {} )>".format(self.id,
                                                                                        self.company_name,

@@ -1,7 +1,7 @@
 {% extends "layout.html" %}
 {% import "bootstrap/wtf.html" as wtf %}
 
-{% block title %}Import{% endblock %}
+{% block title %}Reports{% endblock %}
 
 {% block page_content %}
 
@@ -9,13 +9,36 @@
 
 <div class="slide-content">
   <div class="container">
-    <h2>Create Report</h2>
-    {{ wtf.quick_form(form) }}
+    <h2>Reports</h2>
+    <a href="{{ url_for('report.create') }}" class="btn btn-primary pull-right">Create report</a>
+    <table class="table table-hover">
+        <thead>
+        <tr class="table-header">
+            <th>Postleitzahl</th>
+            <th>Company name</th>
+            <th>Created</th>
+            <th>Description</th>
+            <th>Actions</th>
+        </tr>
+        </thead>
+        <tbody>
+        {% for r in reports %}
+        <tr data-file-id="{{ r.id }}">
+          <td>{{ r.plz }}</td>
+          <td>{{ r.company_name }}</td>
+          <td>{{ r.created }}</td>
+          <td>{{ r.notes if r.notes else '' }}</td>
+          <td><a href="{{ url_for('report.download', report_id=r.id) }}" class="btn btn-primary"><span class="glyphicon glyphicon-floppy-save"></span></a>
+            <a href="{{ url_for('report.delete', report_id=r.id) }}" class="btn btn-danger"><span class="glyphicon glyphicon-trash"></span></a>
+          </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+    </table>
 </div>
 </div>
 
 {% endblock %}
-
 </div>
 
 {% block scripts %}

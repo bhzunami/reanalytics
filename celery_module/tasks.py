@@ -24,14 +24,13 @@ class FTPError(Exception):
         subject = 'Error in importing new XML File'
         sender = celery.conf.SENDER
         msg = "From: 'Avisum <{sender}>' \r\nTo: 'Sender <{to}>' \r\nSubject: {subject}\r\n{msg}".format(
-                                                                                        subject=subject,
-                                                                                        sender=sender,
-                                                                                        to=celery.conf.TO,
-                                                                                        msg=message)
+            subject=subject,
+            sender=sender,
+            to=celery.conf.TO,
+            msg=message)
 
         server.sendmail(sender, celery.conf.TO, "{}".format(msg))
         server.quit()
-
 
 @celery.task
 def import_xml(file_id, strongest_site_id, user_id=None, url=None):
@@ -45,7 +44,7 @@ def import_xml(file_id, strongest_site_id, user_id=None, url=None):
     :return:
     """
     import datetime
-    from app.models import Time, Location, Ad, File
+    from app.models import Time, Location, Ad, File, AnalyticView
     from app import db
 
     logger.info("Start importing file")
@@ -149,6 +148,8 @@ def import_xml(file_id, strongest_site_id, user_id=None, url=None):
     if user_id and url:
         data['current'] = len(ads)
         post(url, json=data)
+
+    AnalyticView.refresh()
 
 
 @celery.task

@@ -1,0 +1,23 @@
+{% extends "layout.html" %}
+{% import "bootstrap/wtf.html" as wtf %}
+
+{% block title %}Import{% endblock %}
+
+{% block page_content %}
+
+<div class="slide"></div>
+
+<div class="slide-content">
+  <div class="container">
+    <h2>Create Report</h2>
+    {{ wtf.quick_form(form) }}
+</div>
+</div>
+
+{% endblock %}
+
+</div>
+
+{% block scripts %}
+{{ super() }}
+{% endblock %}

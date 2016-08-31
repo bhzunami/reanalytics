@@ -20,7 +20,7 @@ def login():
         if user is not None and user.verify_password(form.password.data):
             login_user(user, form.remember_me.data)
             current_user.set_lastlogin()
-            flash('You have succesfully logged in {}'.format(user.name), 'success')
+            flash('You have successfully logged in {}'.format(user.name), 'success')
             return redirect(request.args.get('next') or url_for('main.index'))
         flash('Invalid username or password', 'danger')
 
