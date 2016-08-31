@@ -23,6 +23,7 @@ RUN mkdir /root/reanalytics/data \
     && mkdir /root/reanalytics/logs \
     && pip3 install -r /root/reanalytics/requirements.txt \
     && chown -R www-data:www-data /root/reanalytics \
+    && chmod 755 /root/ \
     && chown -R www-data:www-data /var/log
 
 ENV FLASK_CONFIG=production
