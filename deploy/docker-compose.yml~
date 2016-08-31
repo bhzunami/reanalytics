@@ -1,0 +1,30 @@
+
+app:
+  build: .
+  ports:
+    - "49212:80"
+  volumes:
+    - ./data/xml_files:/root/reanalytics/data
+    - ./data/reports:/root/reanalytics/reports
+  hostname: reanalytics
+  domainname: nicolasmauchle.ch
+  restart: always
+  links:
+    - rabbit:rabbit
+    - pg:database
+
+rabbit:
+  image: rabbitmq:3
+  environment:
+    - RABBITMQ_DEFAULT_USER=nicolas
+    - RABBITMQ_DEFAULT_PASS=as3fg9mn
+    - RABBITMQ_DEFAULT_VHOST=avisum
+
+pg:
+  image: postgres
+  volumes:
+    - ./data/database:/var/lib/postgresql/data/pgdata
+  environment:
+    - PGDATA=/var/lib/postgresql/data/pgdata
+    - POSTGRES_PASSWORD=as3fg9mn
+    - POSTGRES_USER=nicolas

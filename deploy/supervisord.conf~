@@ -1,0 +1,15 @@
+[supervisord]
+nodaemon=true
+
+[program:nginx]
+command=/usr/sbin/nginx
+
+
+[program:celery]
+directory=/root
+command=celery -A manage.celery worker --loglevel=info -B
+
+[program:gunicorn]
+directory=/root
+#command=gunicorn --worker-class eventlet --bind unix:reanalytics.sock -w 1 manage:app
+command=gunicorn --worker-class eventlet --bind 0.0.0.0:8000 -w 1 manage:app
