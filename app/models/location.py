@@ -12,12 +12,12 @@ class Location(UserMixin, db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     # Gemeinde
-    plz = db.Column(db.Integer)
+    plz = db.Column(db.Integer, index=True)
     locality = db.Column(db.String)
-    bfs_nr = db.Column(db.Integer)
-    district_nr = db.Column(db.Integer)
+    bfs_nr = db.Column(db.Integer, index=True)
+    district_nr = db.Column(db.Integer, index=True)
     district = db.Column(db.String)
-    canton_nr = db.Column(db.Integer)
+    canton_nr = db.Column(db.Integer, index=True)
     canton = db.Column(db.String)
     canton_code = db.Column(db.String)
 
@@ -64,7 +64,7 @@ class Canton(UserMixin, db.Model):
 
     id = db.Column(db.Integer, primary_key=True, nullable=False)
     name = db.Column(db.String)
-    code = db.Column(db.String)
+    code = db.Column(db.String, index=True)
 
     @staticmethod
     def insert():

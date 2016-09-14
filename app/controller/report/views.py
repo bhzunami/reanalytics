@@ -42,9 +42,9 @@ def create_report(plz, type, year, report_id):
         db.select([AnalyticView.rooms,
                    AnalyticView.price,
                    AnalyticView.area, ])
-        .where(AnalyticView.plz == plz)
-        .where(AnalyticView.type == type)
-        .where(AnalyticView.cyear == year),
+            .where(AnalyticView.plz == plz)
+            .where(AnalyticView.type == type)
+            .where(AnalyticView.cyear == year),
         db.session.bind)
 
     # Replace all rooms which are greater as 6
@@ -315,11 +315,12 @@ def create():
         report = Report(plz=form.plz.data,
                         company_name=form.company_name.data,
                         notes=form.notes.data,
-                        created=datetime.datetime.today())
+                        created=datetime.datetime.today(),
+                        current=int(form.current.data))
         db.session.add(report)
         db.session.commit()
 
-        create_report(form.plz.data, 'Wohnung', 2016, report.id)
+        create_report2(form.plz.data, 'Wohnung', 2016, report.id)
 
         flash('Succesfully created new report', 'success')
         return send_from_directory(current_app.config['REPORT_DIR'],
@@ -360,3 +361,65 @@ def delete(report_id):
     flash('Succesfully delte Report', 'success')
     return redirect(url_for('.index'))
 
+
+
+def create_report2(plz, type, year, report_id):
+    file_name = os.path.join(current_app.config['REPORT_DIR'],
+                             'Report_{}.xls'.format(report_id))
+    writer = pd.ExcelWriter(file_name, engine='xlsxwriter')
+
+    workbook = writer.book
+    worksheet = workbook.add_worksheet('Kapitalübersicht')
+
+    formats = {'yellow_bar': workbook.add_format({'bg_color': '#FFFF00', 'font_color': '#000000', 'bold': True}),
+               'reanalytic_clolor': workbook.add_format({'bg_color': '#065f69',
+                                                         'font_color': '#FFFFFF',
+                                                         'bold': True,
+                                                         'font_size': 20,
+                                                         'valign': 'vcenter'}),
+               'bold': workbook.add_format({'bold': True}),
+               'merge_format': workbook.add_format({'align': 'center'}),
+               'title': workbook.add_format({'bold': True, 'font_size': 20}),
+               'h1': workbook.add_format({'bold': True, 'font_size': 18}),
+               'h2': workbook.add_format({'bold': True, 'font_size': 16}),
+               'h3': workbook.add_format({'font_size': 14})
+               }
+    percent = workbook.add_format({'num_format': '0.00%'})
+
+    location = Location.query.filter_by(plz=plz).first()
+    make_title_sheet(worksheet, formats, location)
+
+    worksheet = workbook.add_worksheet('Mengenanalyse')
+
+    data = pd.read_sql_query(
+        db.select([AnalyticView.rooms,
+                   AnalyticView.price,
+                   AnalyticView.area, ])
+            .where(AnalyticView.canton_nr == location.canton_nr)
+            .where(AnalyticView.type == type)
+            .where(AnalyticView.edate == '2016-07-10'),
+        db.session.bind)
+
+    make_quantitive_analysis(worksheet, formats, data)
+
+    workbook.close()
+
+def make_title_sheet(worksheet, formats, location):
+    import datetime as dt
+
+    worksheet.set_column(0, 0, 20)
+    worksheet.set_row(5, 30)
+    worksheet.write('A6', 'REANALYTICS', formats['title'])
+    worksheet.merge_range('A9:M12', 'Report für {} {}'.format(location.plz, location.locality),
+                          formats['reanalytic_clolor'])
+    worksheet.write('A15', 'Datum', formats['bold'])
+    worksheet.write('B15', '{}'.format(dt.datetime.today().strftime("%d.%m.%Y")) )
+    worksheet.write('A16', 'Lizensiert für', formats['bold'])
+    worksheet.write('B16', 'Linus Schenk', )
+    worksheet.write('A18', 'Powered by reanalytic.ch', formats['bold'])
+
+
+
+def make_quantitive_analysis(worksheet, formats, data):
+    print(data)
+    pass

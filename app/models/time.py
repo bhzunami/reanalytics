@@ -7,11 +7,11 @@ from flask_login import UserMixin
 class Time(UserMixin, db.Model):
     __tablename__ = "times"
     id = db.Column(db.Integer, primary_key=True)
-    day = db.Column(db.Integer, nullable=False)
-    month = db.Column(db.Integer, nullable=False)
-    year = db.Column(db.Integer, nullable=False)
+    day = db.Column(db.Integer, nullable=False, index=True)
+    month = db.Column(db.Integer, nullable=False, index=True)
+    year = db.Column(db.Integer, nullable=False, index=True)
     business_day = db.Column(db.Boolean, nullable=False)
-    quarter = db.Column(db.Integer, nullable=False)
+    quarter = db.Column(db.Integer, nullable=False, index=True)
     date = db.Column(db.Date, nullable=False)
 
     ads_created = db.relationship('Ad', back_populates='created', foreign_keys='Ad.created_id')
