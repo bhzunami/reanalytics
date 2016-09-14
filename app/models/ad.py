@@ -16,10 +16,10 @@ class Ad(UserMixin, db.Model):
 
     id = db.Column(db.Integer, primary_key=True, nullable=False)
     title = db.Column(db.String)
-    type = db.Column(db.String)
+    type = db.Column(db.String, index=True)
     area = db.Column(db.Float)
-    price = db.Column(db.Float)
-    rooms = db.Column(db.String)
+    price = db.Column(db.Float, index=True)
+    rooms = db.Column(db.Float)
     # category = Column(Boolean, nullable=False)
     location_id = db.Column(db.Integer, db.ForeignKey('locations.id'))
     created_id = db.Column(db.Integer, db.ForeignKey('times.id'))

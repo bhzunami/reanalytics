@@ -42,11 +42,11 @@ def initialize():
     upgrade()
     db.create_all()  # Create the materialized view
 
-    Role.insert_roles()
-    Canton.insert()
-    District.insert()
-    Location.insert()
-    Ad.insert_initial_xml()
+    #Role.insert_roles()
+    #Canton.insert()
+    #District.insert()
+    #Location.insert()
+    #Ad.insert_initial_xml()
     User.insert_default_user()
 
 
