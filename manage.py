@@ -47,7 +47,7 @@ def initialize():
     #District.insert()
     #Location.insert()
     #Ad.insert_initial_xml()
-    User.insert_default_user()
+    #User.insert_default_user()
 
 
 @manager.command

@@ -48,12 +48,13 @@ class Location(UserMixin, db.Model):
         db.session.commit()
 
     def __repr__(self):
-        return "<Location(id={}, locality={}, bfs_nr={}, district_nr {} distirct={}, canton={})>".format(self.id,
-                                                                                                         self.locality,
-                                                                                                         self.bfs_nr,
-                                                                                                         self.district_nr,
-                                                                                                         self.district,
-                                                                                                         self.canton)
+        return "<Location(id={}, plz={}, locality={}, bfs_nr={}, district_nr {} distirct={}, canton={})>".format(self.id,
+                                                                                                                 self.plz,
+                                                                                                                 self.locality,
+                                                                                                                 self.bfs_nr,
+                                                                                                                 self.district_nr,
+                                                                                                                 self.district,
+                                                                                                                 self.canton)
 
 
 class Canton(UserMixin, db.Model):

@@ -1,0 +1,99 @@
+import pandas as pd
+import matplotlib.pyplot as plt
+plz = 4103
+type = 'Wohnung'
+location = Location.query.filter_by(plz=plz).first()
+data = pd.read_sql_query(
+                db.select([AnalyticView.rooms,
+                            AnalyticView.price,
+                            AnalyticView.area,
+                            AnalyticView.plz,
+                            AnalyticView.district_nr, ])
+                .where(AnalyticView.canton_nr == location.canton_nr)
+                .where(AnalyticView.type == type)
+                .where(AnalyticView.edate == "2016-07-10"),
+                db.session.bind)
+data.loc[data.rooms > 6] = 6
+
+rooms = pd.DataFrame({
+            '{}'.format(location.plz): data.loc[(data.rooms != 0) &
+                                                (data.plz == 4103)]
+                                           .groupby('rooms')
+                                           .rooms.count() / len(data.loc[(data.rooms != 0) &
+                                                                           (data.plz == location.plz)]),
+            location.district: data.loc[(data.rooms != 0) &
+                                        (data.district_nr == location.district_nr)]
+                                   .groupby('rooms')
+                                   .rooms.count() / len(data.loc[(data.rooms != 0) &
+                                                                 (data.district_nr == location.district_nr)]),
+            location.canton: data.loc[data.rooms != 0]
+                                 .groupby('rooms')
+                                 .rooms.count() / len(data.loc[data.rooms != 0])
+            })
+
+(a*100).plot.bar()
+plt.close()
+fig, ax = plt.subplots()
+ax.set_xlabel('Room', rotation=0)
+ax.set_ylabel("Percent", rotation=90)
+(a*100).plot(kind='bar', color = ['dodgerblue', 'red', 'gray'], legend=True, ax=ax)
+patches, labels = ax.get_legend_handles_labels()
+ax.legend(patches, labels, loc='best')
+
+from io import BytesIO
+import matplotlib.pyplot as plt
+imagedata = BytesIO()
+plt.suptitle('habahaba', fontsize=20)
+plt.savefig('test.png', format="png")
+imagedata.seek(0)
+
+plt.show()
+
+
+def priceg(value):
+    if value <= 1000:
+        return '<1000'
+    elif value >=1000 and value < 1500:
+        return '1000'
+    elif value >=1500 and value < 2000:
+        return '1500'
+    elif value >=2000 and value < 2500:
+        return '2000'
+    elif value >=2500 and value < 3000:
+        return '2500'
+    else:
+        return '3000'
+
+data.groupby(['prices', priceg]).head()
+prices = pd.DataFrame({
+            '{}'.format(location.plz): data.loc[(data.rooms != 0) &
+                                                (data.plz == 4103)]
+                                           .groupby('rooms')
+                                           .rooms.count() / len(data.loc[(data.rooms != 0) &
+                                                                           (data.plz == location.plz)]),
+            location.district: data.loc[(data.rooms != 0) &
+                                        (data.district_nr == location.district_nr)]
+                                   .groupby('rooms')
+                                   .rooms.count() / len(data.loc[(data.rooms != 0) &
+                                                                 (data.district_nr == location.district_nr)]),
+            location.canton: data.loc[data.rooms != 0]
+                                 .groupby('rooms')
+                                 .rooms.count() / len(data.loc[data.rooms != 0])
+            })
+
+
+ 
+Links
+http://matplotlib.org/api/axes_api.html
+http://stackoverflow.com/questions/36164255/python-plot-bar-chart-and-percentage-line-chart-on-same-graph
+http://matplotlib.org/api/axis_api.html
+http://pandas.pydata.org/pandas-docs/stable/dsintro.html#dataframe
+
+http://pandas.pydata.org/pandas-docs/stable/visualization.html#bar-plots
+
+
+
+It is very easy to manage the editor that it behaves like you want.
+You have a good documentation.
+I do not like to study an editor or a development environment for hours to set up. I want to code straight forward and the rest should be simple enough to configure in one or two steps. And that is possible with visual code.
+Thanks
