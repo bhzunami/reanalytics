@@ -57,6 +57,21 @@ celery worker -A manage.celery --loglevel=info -B
 # Flask
 python manage.py runserver
 
+oder mit Websockets
+gunicorn --worker-class eventlet -b 0.0.0.0:8000 -w 1 manage:app
+
 
 http://stackoverflow.com/questions/13660118/running-a-flask-app-with-nginx-and-gunicorn
 http://www.jeffwidman.com/blog/847/using-sqlalchemy-to-create-and-manage-postgresql-materialized-views/
+
+data = pd.read_sql_query(
+                    db.select([AnalyticView.rooms,
+                               AnalyticView.price,
+                               AnalyticView.area,
+                               AnalyticView.plz,                                                                    
+                               AnalyticView.district, ])
+                    .where(AnalyticView.canton_nr == location.canton_nr)
+                    .where(AnalyticView.type == type)
+                    # .where(AnalyticView.edate == dt.datetime.today()),
+                    .where(AnalyticView.edate == "2016-07-10"),
+                    db.session.bind)

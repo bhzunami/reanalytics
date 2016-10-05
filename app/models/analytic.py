@@ -10,7 +10,7 @@ class AnalyticView(View):
 
     created = db.aliased(Time)
     ended = db.aliased(Time)
-    __table__ = create_view("analytic_v",
+    __table__ = create_view("analytic_apartment_v",
                             db.select([Ad.id.label('id'),
                                       Ad.title.label('title'),
                                       Ad.type.label('type'),
@@ -47,7 +47,8 @@ class AnalyticView(View):
                                 db.join(Ad, Location, isouter=False)
                                 .join(created, Ad.created_id==created.id, isouter=False)
                                 .join(ended, Ad.ended_id == ended.id, isouter=False)
-                            )
+                                
+                            ).where(Ad.price <= 20000)
                            )
 
 # db.Index('analytic_view_id_idx', AnalyticView.id, unique=True)
