@@ -326,6 +326,7 @@ def create():
         rg = ReportGenerator(form.plz.data, 'Wohnung', 2016, report.id)
         rg.make_title_sheet()
         rg.make_quantitive_analysis()
+        rg.make_price_analysis()
         rg.finish()
 
         flash('Succesfully created new report', 'success')
