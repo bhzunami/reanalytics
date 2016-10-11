@@ -51,7 +51,8 @@ plt.show()
 
 
 def priceg(value):
-    if value <= 1000:
+    value = value.price
+    if value <1000:
         return '<1000'
     elif value >=1000 and value < 1500:
         return '1000'
@@ -62,9 +63,9 @@ def priceg(value):
     elif value >=2500 and value < 3000:
         return '2500'
     else:
-        return '3000'
+        return '3000>'
 
-data.groupby(['prices', priceg]).head()
+data.groupby(lambda x: priceg(x)]).head()
 prices = pd.DataFrame({
             '{}'.format(location.plz): data.loc[(data.rooms != 0) &
                                                 (data.plz == 4103)]
@@ -97,3 +98,36 @@ It is very easy to manage the editor that it behaves like you want.
 You have a good documentation.
 I do not like to study an editor or a development environment for hours to set up. I want to code straight forward and the rest should be simple enough to configure in one or two steps. And that is possible with visual code.
 Thanks
+
+
+
+
+data = pd.read_sql_query(
+                    db.select([AnalyticView.rooms,
+                               AnalyticView.price,
+                               AnalyticView.area,
+                               AnalyticView.plz,
+                               AnalyticView.district_nr,
+                               AnalyticView.cdate, 
+                               AnalyticView.edate ])
+                    .where(AnalyticView.canton_nr == location.canton_nr)
+                    .where(AnalyticView.type == 'Wohnung')
+                    .where(AnalyticView.cyear >= "2015"),
+                    db.session.bind,
+                    parse_dates=['cdate', 'edate'])
+
+
+data = pd.read_sql_query(
+                    db.select([AnalyticView.rooms,
+                               AnalyticView.price,
+                               AnalyticView.area,
+                               AnalyticView.plz,
+                               AnalyticView.district_nr,
+                               AnalyticView.cdate, 
+                               AnalyticView.edate ])
+                    .where(AnalyticView.canton_nr == location.canton_nr)
+                    .where(AnalyticView.type == 'Wohnung')
+                    .where(AnalyticView.cyear >= "2015"),
+                    db.session.bind,
+                    index_col=['cdate'],
+                    parse_dates=['cdate', 'edate'])
