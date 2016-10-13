@@ -5,8 +5,6 @@ import datetime as dt
 import pandas as pd
 import os
 
-colors = ['lightgreen', 'limegreen', 'greenyellow', 'darkgreen', 'yellowgreen', 'green']
-#colors = ['r', 'g', 'b', 'y', 'k', 'm', 'c']
 sort_index = [1, 2, 3, 4, 5, 6, 0]
 
 headers = {'room': {
@@ -72,12 +70,6 @@ def group_by_area(value):
         return 4
     else:
         return 5
-
-
-def header_look_up(type):
-
-
-    pass
 
 
 class ReportGenerator(object):
@@ -156,17 +148,14 @@ class ReportGenerator(object):
         worksheet.write(3, 0, "Currently available apartments in {}".format(self.location.canton))
         worksheet.write(3, 1, len(self.data.index))
 
-        # Write a scatter plot
-        from io import BytesIO
-        import matplotlib.pyplot as plt
-        imagedata = BytesIO()
-        self.data[(self.data.price != 0) & (self.data.area != 0) ].plot(kind='scatter', x='price', y='area')
-        plt.suptitle('Bruttomiete & Wohnfläche {}'.format(self.location.plz), fontsize=20)
-        plt.savefig(imagedata, format="png")
-        imagedata.seek(0)
-        worksheet.insert_image(1, 10, "", {'image_data': imagedata})
-        plt.close()
+        # Write a scatter plot data 
+        # self.data[(self.data.price != 0) & (self.data.area != 0) ]
 
+        self.write_dataframe(df=self.data[(self.data.price != 0) & (self.data.area != 0)][['area','price']].transpose(),
+                                     worksheet=self.workbook.add_worksheet('data'),
+                                     row=1,
+                                     title='Data')
+        
         # First group sum by rooms
         # data = self.data[self.data.rooms != 0]
         # data = data[data.area != 0]
@@ -175,71 +164,38 @@ class ReportGenerator(object):
         # Rooms
         # - - - -
         self.data.loc[self.data.rooms > 6] = 6
-        rooms = self.build_data_frame('rooms', 'rooms')
+        rooms = self.build_percent_data_frame('rooms', 'rooms')
 
         # Insert in excel
         title = 'Aktueller Bestand an inserierten Mietwohnugen'
-        index = self.write_dataframe(rooms, worksheet, 7, title, type='room', format=self.formats['percent'])
+        index = self.write_dataframe(rooms, worksheet, row=7, title=title, type='room', format=self.formats['percent'])
         worksheet.write(index, 0, 'Nicht definiert')
         worksheet.write(index, 1, self.data.loc[self.data.rooms == 0].count().rooms)
-
-        # Design the bar plot
-        self.write_bar_plot(df=rooms*100,
-                            xlabel='Room',
-                            ylabel='Percent',
-                            title='Bestand an Mietwohnungen mit Benchmarks (Zimmerkategorie)',
-                            xpos=40,
-                            ypos=10,
-                            ws=worksheet,
-                            type='bar',
-                            colors=colors)
 
         # Price
         # - - - - -
         self.data['gprice'] = self.data.loc[self.data.price != 0].price.apply(group_by_price)
-        prices = self.build_data_frame('price', 'gprice')
+        prices = self.build_percent_data_frame('price', 'gprice')
 
         # Insert in excel
-        index = self.write_dataframe(prices, worksheet, 14, title, type='price', format=self.formats['percent'])
+        index = self.write_dataframe(prices, worksheet, row=14, title=title, type='price', format=self.formats['percent'])
         worksheet.write(index, 0, 'Nicht definiert')
         worksheet.write(index, 1, self.data.loc[self.data.price == 0].count().price)
-
-        # Design the bar plot
-        self.write_bar_plot(df=prices*100,
-                            xlabel='Price',
-                            ylabel='Percent',
-                            title='Bestand an Mietwohnungen mit Benchmarks (Zimmerkategorie)',
-                            xpos=40,
-                            ypos=25,
-                            ws=worksheet,
-                            type='bar',
-                            colors=colors)
 
         # Area
         # - - - -
         self.data['garea'] = self.data.loc[self.data.area != 0].area.apply(group_by_area)
-        areas = self.build_data_frame('area', 'garea')
+        areas = self.build_percent_data_frame('area', 'garea')
 
         # Insert in excel
         index = self.write_dataframe(df=areas,
                                      worksheet=worksheet,
-                                     col=21,
+                                     row=21,
                                      title=title,
                                      type='area',
                                      format=self.formats['percent'])
         worksheet.write(index, 0, 'Nicht definiert')
         worksheet.write(index, 1, self.data.loc[self.data.area == 0].count().price)
-
-        # plot
-        self.write_bar_plot(df=areas*100,
-                            xlabel='Grösse',
-                            ylabel='Percent',
-                            title='Bestand an Mietwohnungen mit Benchmarks (Zimmerkategorie)',
-                            xpos=40,
-                            ypos=40,
-                            ws=worksheet,
-                            type='bar',
-                            colors=colors)
 
         # =======================================================================
         # Natural growth:
@@ -265,53 +221,58 @@ class ReportGenerator(object):
 
         data = data.set_index('cdate')
 
-        self.write_bar_plot(df=data.loc[data.rooms != 0].groupby(pd.TimeGrouper("M")).count().area,
-                            title='Bestandsentwicklung Total',
-                            xpos=75,
-                            ypos=10,
-                            ws=worksheet,
-                            type='area',
-                            colors='blue',
-                            legend=False)
-
         index = self.write_dataframe(df=data.groupby([pd.TimeGrouper("M"), 'grooms']).rooms.count().reindex(sort_index, level=1).unstack(0),
                                      worksheet=worksheet,
-                                     col=30,
+                                     row=30,
                                      title='Room: Bestandsentwicklung an inserierten Mietwohnungen',
                                      type='room')
 
-        self.write_bar_plot(df=data.groupby([pd.TimeGrouper("M"), 'grooms']).rooms.count().unstack(1),
-                            title='Bestandsentwicklung rooms',
-                            xpos=75,
-                            ypos=25,
-                            type='line',
-                            ws=worksheet)
-
         index = self.write_dataframe(df=data.groupby([pd.TimeGrouper("M"), 'gprice']).price.count().reindex(sort_index, level=1).unstack(0),
                                      worksheet=worksheet,
-                                     col=index+2,
+                                     row=index+2,
                                      title='Price: Bestandsentwicklung an inserierten Mietwohnungen',
                                      type='price')
 
-        self.write_bar_plot(df=data.groupby([pd.TimeGrouper("M"), 'gprice']).price.count().unstack(1),
-                            title='Bestandsentwicklung Price',
-                            xpos=75,
-                            ypos=40,
-                            type='line',
-                            ws=worksheet)
-
         index = self.write_dataframe(df=data.groupby([pd.TimeGrouper("M"), 'garea']).area.count().reindex(sort_index, level=1).unstack(0),
                                      worksheet=worksheet,
-                                     col=index+2,
+                                     row=index+2,
                                      title='Area: Bestandsentwicklung an inserierten Mietwohnungen',
                                      type='area')
 
-        self.write_bar_plot(df=data.groupby([pd.TimeGrouper("M"), 'garea']).area.count().unstack(1),
-                            title='Bestandsentwicklung Area',
-                            xpos=75,
-                            ypos=55,
-                            type='line',
-                            ws=worksheet)
+
+
+        data2 = data.set_index('edate')
+        index = self.write_dataframe(df=data2.groupby([pd.TimeGrouper("M"), 'grooms']).rooms.count().reindex(sort_index, level=1).unstack(0),
+                                     worksheet=worksheet,
+                                     row=30,
+                                     col=10,
+                                     title='Room: Bestandsentwicklung an inserierten Mietwohnungen',
+                                     type='room')
+
+        a = data.groupby([pd.TimeGrouper("M"), 'grooms']).rooms.count().reindex(sort_index, level=1).unstack(0) - data2.groupby([pd.TimeGrouper("M"), 'grooms']).rooms.count().reindex(sort_index, level=1).unstack(0)
+        index = self.write_dataframe(df=a,
+                                     worksheet=worksheet,
+                                     row=30,
+                                     col=20,
+                                     title='Room: Bestandsentwicklung an inserierten Mietwohnungen',
+                                     type='room')
+
+        index = self.write_dataframe(df=data2.groupby([pd.TimeGrouper("M"), 'gprice']).price.count().reindex(sort_index, level=1).unstack(0),
+                                     worksheet=worksheet,
+                                     row=index+5,
+                                     col=10,
+                                     title='Price: Bestandsentwicklung an inserierten Mietwohnungen',
+                                     type='price')
+
+        index = self.write_dataframe(df=data2.groupby([pd.TimeGrouper("M"), 'garea']).area.count().reindex(sort_index, level=1).unstack(0),
+                                     worksheet=worksheet,
+                                     row=index+5,
+                                     col=10,
+                                     title='Area: Bestandsentwicklung an inserierten Mietwohnungen',
+                                     type='area')
+
+        
+                    
 
         # Durchschnittliche Wohnungsgrösse (m2)
 
@@ -335,42 +296,21 @@ class ReportGenerator(object):
 
         index = self.write_dataframe(df=mean_rooms[self.location.plz].reindex(sort_index, level=0).unstack(1),
                                      worksheet=worksheet,
-                                     col=index+2,
+                                     row=index+2,
                                      title='PLZ Durchschnittliche Wohnungsgrösse (m2)',
                                      type='area')
 
         index = self.write_dataframe(df=mean_rooms[self.location.district].reindex(sort_index, level=0).unstack(1),
                                      worksheet=worksheet,
-                                     col=index+2,
+                                     row=index+2,
                                      title='District Durchschnittliche Wohnungsgrösse (m2)',
                                      type='area')
 
         index = self.write_dataframe(df=mean_rooms[self.location.canton].reindex(sort_index, level=0).unstack(1),
                                      worksheet=worksheet,
-                                     col=index+2,
+                                     row=index+2,
                                      title='Canton Durchschnittliche Wohnungsgrösse (m2)',
                                      type='area')
-
-        self.write_bar_plot(df=mean_rooms[self.location.plz].reindex(sort_index, level=0).unstack(0),
-                            title='Bestandsentwicklung Area {}'.format(self.location.plz),
-                            xpos=110,
-                            ypos=10,
-                            type='box',
-                            ws=worksheet)
-
-        self.write_bar_plot(df=mean_rooms[self.location.district].reindex(sort_index, level=0).unstack(0),
-                            title='Bestandsentwicklung Area {}'.format(self.location.district),
-                            xpos=110,
-                            ypos=25,
-                            type='box',
-                            ws=worksheet)
-                        
-        self.write_bar_plot(df=mean_rooms[self.location.canton].reindex(sort_index, level=0).unstack(0),
-                            title='Bestandsentwicklung Area {}'.format(self.location.canton),
-                            xpos=110,
-                            ypos=40,
-                            type='box',
-                            ws=worksheet)
 
     def make_price_analysis(self):
         sheetname = 'Preisanalyse'
@@ -398,92 +338,46 @@ class ReportGenerator(object):
 
         index = self.write_dataframe(df=mean_prices[self.location.plz].reindex(sort_index, level=0).unstack(1),
                                      worksheet=worksheet,
-                                     col=index+2,
+                                     row=index+2,
                                      title='PLZ Mietpreisniveau allgemein',
                                      type='price')
 
         index = self.write_dataframe(df=mean_prices[self.location.district].reindex(sort_index, level=0).unstack(1),
                                      worksheet=worksheet,
-                                     col=index+2,
+                                     row=index+2,
                                      title='District Mietpreisniveau allgemein',
                                      type='price')
 
         index = self.write_dataframe(df=mean_prices[self.location.canton].reindex(sort_index, level=0).unstack(1),
                                      worksheet=worksheet,
-                                     col=index+2,
+                                     row=index+2,
                                      title='Canton Mietpreisniveau allgemein',
                                      type='price')
 
-        self.write_bar_plot(df=mean_prices[self.location.plz].reindex(sort_index, level=0).unstack(0),
-                            title='Mietpreisniveau allgemein {}'.format(self.location.plz),
-                            xpos=1,
-                            ypos=10,
-                            type='box',
-                            ws=worksheet)
-
-        self.write_bar_plot(df=mean_prices[self.location.district].reindex(sort_index, level=0).unstack(0),
-                            title='Mietpreisniveau allgemein {}'.format(self.location.district),
-                            xpos=1,
-                            ypos=25,
-                            type='box',
-                            ws=worksheet)
-
-        self.write_bar_plot(df=mean_prices[self.location.canton].reindex(sort_index, level=0).unstack(0),
-                            title='Mietpreisniveau allgemein {}'.format(self.location.canton),
-                            xpos=1,
-                            ypos=40,
-                            type='box',
-                            ws=worksheet)
 
     def finish(self):
         self.workbook.close()
 
-    def write_dataframe(self, df, worksheet, col, title=None, type=None, format=None, r=0):
+    def write_dataframe(self, df, worksheet, row=0, col=0, title=None, type=None, format=None):
         """
         Helper method to write a dataframe to an excel worksheet
         """
         if title:
-            worksheet.write(col, r, '{}'.format(title), self.formats['h3'])
-            col += 1
+            worksheet.write(row, col, '{}'.format(title), self.formats['h3'])
+            row += 1
         if type:
             for i in range(0, len(df.index)):
-                worksheet.write(col, i+1, headers[type][df.index[i]])
-            col += 1
+                worksheet.write(row, col+i+1, headers[type][df.index[i]])
+            row += 1
         for i in range(df.shape[1]):
-            if r == 0:
-                worksheet.write(col+i, 0, '{}'.format(df.keys()[i]))
+            worksheet.write(row+i, col, '{}'.format(df.keys()[i]))
             df[df.keys()[i]] = df[df.keys()[i]].fillna(0)
             for j in range(df.shape[0]):
-                worksheet.write(col+i, j+1+r, df[df.keys()[i]][df.index[j]], format)
+                worksheet.write(row+i, col+j+1, df[df.keys()[i]][df.index[j]], format)
 
-        return col + df.shape[1]
+        return row + df.shape[1]
 
-    def write_bar_plot(self, df, ws, xlabel=None, ylabel=None, title=None, xpos=0, ypos=0, type=None, colors=colors, legend=True):
-        """
-        Helper function for print bar plot in excel
-        """
-        from io import BytesIO
-        import matplotlib.pyplot as plt
-        # Design the bar plot
-        fig, ax = plt.subplots()
-        if xlabel:
-            ax.set_xlabel(xlabel, rotation=0)
-        if ylabel:
-            ax.set_ylabel(ylabel, rotation=90)
-        #df.plot(kind=type, color=to_rgba_array(colors[:len(df)]), legend=legend, ax=ax)
-        df.plot(kind=type, legend=legend, ax=ax)
-        if xlabel or ylabel:
-            patches, labels = ax.get_legend_handles_labels()
-            ax.legend(patches, labels, loc='best')
-        # Insert in excel
-        imagedata = BytesIO()
-        plt.suptitle(title, fontsize=20)
-        plt.savefig(imagedata, format="png")
-        imagedata.seek(0)
-        ws.insert_image(xpos, ypos, "", {'image_data': imagedata})
-        plt.close()
-
-    def build_data_frame(self, name, group):
+    def build_percent_data_frame(self, name, group):
         return pd.DataFrame({
             self.location.canton: self.data.loc[self.data[name] != 0]
                                            .groupby(group)[name]
