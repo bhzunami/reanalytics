@@ -5,7 +5,7 @@
 from __future__ import absolute_import
 import os
 from app import create_app, create_celery, db, socketio
-from app.models import User, Role, Permission, Location, Canton, District, Ad, AnalyticView
+from app.models import User, Role, Permission, Location, Canton, District, Ad, AnalyticView, File
 from flask_script import Manager, Shell, Server
 from flask_migrate import Migrate, MigrateCommand
 from flask_assets import ManageAssets
@@ -17,6 +17,15 @@ celery = create_celery(app)
 manager = Manager(app)
 migrate = Migrate(app, db)
 
+
+def check_file_name(filename):
+    print(filename)
+    from dateutil.parser import parse
+    try:
+        parse(filename)
+        return True
+    except ValueError:
+        return False
 
 def make_shell_context():
     """
@@ -42,12 +51,30 @@ def initialize():
     upgrade()
     db.create_all()  # Create the materialized view
 
-    #Role.insert_roles()
-    #Canton.insert()
-    #District.insert()
-    #Location.insert()
-    #Ad.insert_initial_xml()
-    #User.insert_default_user()
+    Role.insert_roles()
+    Canton.insert()
+    District.insert()
+    Location.insert()
+    Ad.insert_initial_xml()
+    User.insert_default_user()
+
+
+@manager.command
+def import_file(folder):
+    import os
+    files = [f for f in os.listdir(folder) if check_file_name(os.path.splitext(f)[0])]
+    print("Found {} files for import".format(len(files)))
+    for file in files:
+        print(os.path.abspath(file))
+        f = File(name=file, path=os.path.abspath(file))
+        # Store file
+        db.session.add(f)
+        db.session.commit()
+
+        # Import file
+        print("Start import file {} with id {}".format(file, f.id))
+        from celery_module.tasks import import_xml
+        import_xml.delay(f.id, app.config['STRONGEST_SITE_ID'])
 
 
 @manager.command

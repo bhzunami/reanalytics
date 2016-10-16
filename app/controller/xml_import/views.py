@@ -13,7 +13,7 @@ from ... import db
 @xml_import.route('/', methods=['GET'])
 @login_required
 def get_imported_files():
-    files = File.query.all()
+    files = File.query.limit(30)
     return render_template('xml_import/main.html', files=files)
 
 
