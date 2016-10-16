@@ -30,7 +30,8 @@ headers = {'room': {
                2: '50 - 99',
                3: '100 - 149',
                4: '150 - 199',
-               5: '>= 200'},
+               5: '>= 200',
+               6: 'khjggkjh'}
            }
 
 
@@ -78,7 +79,7 @@ class ReportGenerator(object):
         self.location = Location.query.filter_by(plz=plz).first()
 
         self.file_name = os.path.join(current_app.config['REPORT_DIR'], 'Report_{}.xls'.format(report_id))
-        self.writer = pd.ExcelWriter(self.file_name, engine='xlsxwriter')
+        self.writer = pd.ExcelWriter(self.file_name, engine='xlsxwriter', options={'nan_inf_to_errors': True})
 
         self.workbook = self.writer.book
 
@@ -102,17 +103,37 @@ class ReportGenerator(object):
             }
 
         # Select the data from view
-        self.data = pd.read_sql_query(
-                    db.select([AnalyticView.rooms,
-                               AnalyticView.price,
-                               AnalyticView.area,
-                               AnalyticView.plz,
-                               AnalyticView.district_nr, ])
-                    .where(AnalyticView.canton_nr == self.location.canton_nr)
-                    .where(AnalyticView.type == type)
-                    # .where(AnalyticView.edate == dt.datetime.today()),
-                    .where(AnalyticView.edate == "2016-07-10"),
-                    db.session.bind)
+        # Actual data means get only ads which are at this time active -> not finished
+        self.actual_data = pd.read_sql_query(
+                           db.select([AnalyticView.rooms,
+                                      AnalyticView.price,
+                                      AnalyticView.area,
+                                      AnalyticView.plz,
+                                      AnalyticView.district_nr,
+                                      AnalyticView.cdate,
+                                      AnalyticView.edate])
+                           .where(AnalyticView.canton_nr == self.location.canton_nr)
+                           .where(AnalyticView.type == type)
+                           # .where(AnalyticView.edate == dt.datetime.today()),
+                           .where(AnalyticView.edate == "2016-07-10"),
+                           db.session.bind,
+                           parse_dates=['cdate', 'edate'])
+
+        # historical data means all ads from a period of time
+        self.historical_data = pd.read_sql_query(
+                               db.select([AnalyticView.rooms,
+                                         AnalyticView.price,
+                                         AnalyticView.area,
+                                         AnalyticView.plz,
+                                         AnalyticView.district_nr,
+                                         AnalyticView.cdate,
+                                         AnalyticView.edate])
+                               .where(AnalyticView.plz == self.location.plz)
+                               .where(AnalyticView.type == type)
+                               .where(AnalyticView.cyear >= year),
+                               db.session.bind,
+                               # index_col=['cdate'],
+                               parse_dates=['cdate', 'edate'])
 
     def make_title_sheet(self):
         """
@@ -135,150 +156,182 @@ class ReportGenerator(object):
     def make_quantitive_analysis(self):
         # import matplotlib.pyplot as plt
 
+        # Print scatterplot data
+        self.write_dataframe(df=self.actual_data[(self.actual_data.price != 0) &
+                             (self.actual_data.area != 0) &
+                             (self.actual_data.plz == self.location.plz)]
+                             [['area', 'price']].transpose(),
+                             ws=self.workbook.add_worksheet('scatter_plot_data'),
+                             row=1,
+                             title='Data',
+                             overwriteHeaders=['area', 'price'])
+
         sheetname = 'Mengenanalyse'
         worksheet = self.workbook.add_worksheet(sheetname)
         worksheet.set_row(0, 30)
         worksheet.write('A1', 'Mengenanalyse', self.formats['title'])
 
         # Count
-        worksheet.write(1, 0, "Currently available apartments in {}".format(self.location.plz))
-        worksheet.write(1, 1, len(self.data[self.data.plz == self.location.plz].index))
+        worksheet.write(1, 0, "Currently available apartments in {}".format(
+            self.location.plz))
+        worksheet.write(1, 1, len(self.actual_data[self.actual_data.plz == self.location.plz].index))
         worksheet.write(2, 0, "Currently available apartments in {}".format(self.location.district))
-        worksheet.write(2, 1, len(self.data[self.data.district_nr == self.location.district_nr].index))
+        worksheet.write(2, 1, len(self.actual_data[self.actual_data.district_nr == self.location.district_nr].index))
         worksheet.write(3, 0, "Currently available apartments in {}".format(self.location.canton))
-        worksheet.write(3, 1, len(self.data.index))
-
-        # Write a scatter plot data 
-        # self.data[(self.data.price != 0) & (self.data.area != 0) ]
-
-        self.write_dataframe(df=self.data[(self.data.price != 0) & (self.data.area != 0)][['area','price']].transpose(),
-                                     worksheet=self.workbook.add_worksheet('data'),
-                                     row=1,
-                                     title='Data')
-        
-        # First group sum by rooms
-        # data = self.data[self.data.rooms != 0]
-        # data = data[data.area != 0]
-        # data = data[data.price != 0]
+        worksheet.write(3, 1, len(self.actual_data.index))
 
         # Rooms
         # - - - -
-        self.data.loc[self.data.rooms > 6] = 6
-        rooms = self.build_percent_data_frame('rooms', 'rooms')
-
+        #self.actual_data.loc[self.actual_data.rooms > 6] = 6
+        self.actual_data['grooms'] = self.actual_data.rooms.apply(group_by_rooms)
+        rooms = self.build_percent_data_frame('rooms', 'grooms')
+        index = 5
         # Insert in excel
-        title = 'Aktueller Bestand an inserierten Mietwohnugen'
-        index = self.write_dataframe(rooms, worksheet, row=7, title=title, type='room', format=self.formats['percent'])
+        index = self.write_dataframe(df=rooms,
+                                     ws=worksheet,
+                                     row=index,
+                                     title='rooms',
+                                     type='room',
+                                     format=self.formats['percent'])
+
         worksheet.write(index, 0, 'Nicht definiert')
-        worksheet.write(index, 1, self.data.loc[self.data.rooms == 0].count().rooms)
+        worksheet.write(index, 1, self.actual_data.loc[self.actual_data.rooms == 0]
+                        .count().rooms)
 
         # Price
         # - - - - -
-        self.data['gprice'] = self.data.loc[self.data.price != 0].price.apply(group_by_price)
+        self.actual_data['gprice'] = self.actual_data.loc[self.actual_data.price != 0].price.apply(group_by_price)
         prices = self.build_percent_data_frame('price', 'gprice')
 
         # Insert in excel
-        index = self.write_dataframe(prices, worksheet, row=14, title=title, type='price', format=self.formats['percent'])
+        index = self.write_dataframe(df=prices,
+                                     ws=worksheet,
+                                     row=index+2,
+                                     title='Preis',
+                                     type='price',
+                                     format=self.formats['percent'])
+
         worksheet.write(index, 0, 'Nicht definiert')
-        worksheet.write(index, 1, self.data.loc[self.data.price == 0].count().price)
+        worksheet.write(index, 1, self.actual_data.loc[self.actual_data.price == 0]
+                        .count().price)
 
         # Area
         # - - - -
-        self.data['garea'] = self.data.loc[self.data.area != 0].area.apply(group_by_area)
+        self.actual_data['garea'] = self.actual_data.loc[self.actual_data.area != 0].area.apply(group_by_area)
         areas = self.build_percent_data_frame('area', 'garea')
 
         # Insert in excel
         index = self.write_dataframe(df=areas,
-                                     worksheet=worksheet,
-                                     row=21,
-                                     title=title,
+                                     ws=worksheet,
+                                     row=index+2,
+                                     title='Area',
                                      type='area',
                                      format=self.formats['percent'])
         worksheet.write(index, 0, 'Nicht definiert')
-        worksheet.write(index, 1, self.data.loc[self.data.area == 0].count().price)
+        worksheet.write(index, 1, self.actual_data.loc[self.actual_data.area == 0]
+                        .count().price)
+        index += 2
 
         # =======================================================================
         # Natural growth:
         # =======================================================================
-        data = pd.read_sql_query(
-                    db.select([AnalyticView.rooms,
-                               AnalyticView.price,
-                               AnalyticView.area,
-                               AnalyticView.plz,
-                               AnalyticView.district_nr,
-                               AnalyticView.cdate, 
-                               AnalyticView.edate ])
-                    .where(AnalyticView.plz == self.location.plz)
-                    .where(AnalyticView.type == 'Wohnung')
-                    .where(AnalyticView.cyear >= "2015"),
-                    db.session.bind,
-                    #index_col=['cdate'],
-                    parse_dates=['cdate', 'edate'])
+        self.historical_data['grooms'] = self.historical_data.rooms.apply(group_by_rooms)
+        self.historical_data['gprice'] = self.historical_data.price.apply(group_by_price)
+        self.historical_data['garea'] = self.historical_data.area.apply(group_by_area)
 
-        data['grooms'] = data.rooms.apply(group_by_rooms)
-        data['gprice'] = data.price.apply(group_by_price)
-        data['garea'] = data.area.apply(group_by_area)
+        worksheet = self.workbook.add_worksheet('Bestandesentwicklung')
+        worksheet.write(0, 0, 'Bestandesentwicklung', self.formats['h2'])
+        index = 1
 
-        data = data.set_index('cdate')
+        # Create Timeperiod data
+        cdata = self.historical_data.set_index('cdate')
+        edata = self.historical_data.set_index('edate')
 
-        index = self.write_dataframe(df=data.groupby([pd.TimeGrouper("M"), 'grooms']).rooms.count().reindex(sort_index, level=1).unstack(0),
-                                     worksheet=worksheet,
-                                     row=30,
-                                     title='Room: Bestandsentwicklung an inserierten Mietwohnungen',
-                                     type='room')
+        # Rooms
+        crooms = self.make_time_series(cdata, 'grooms')
+        erooms = self.make_time_series(edata, 'grooms')
 
-        index = self.write_dataframe(df=data.groupby([pd.TimeGrouper("M"), 'gprice']).price.count().reindex(sort_index, level=1).unstack(0),
-                                     worksheet=worksheet,
-                                     row=index+2,
-                                     title='Price: Bestandsentwicklung an inserierten Mietwohnungen',
-                                     type='price')
+        self.write_dataframe(
+            df=crooms,
+            ws=worksheet,
+            row=index+1,
+            title='Rooms new',
+            type='room')
 
-        index = self.write_dataframe(df=data.groupby([pd.TimeGrouper("M"), 'garea']).area.count().reindex(sort_index, level=1).unstack(0),
-                                     worksheet=worksheet,
-                                     row=index+2,
-                                     title='Area: Bestandsentwicklung an inserierten Mietwohnungen',
-                                     type='area')
+        self.write_dataframe(
+            df=erooms,
+            ws=worksheet,
+            row=index+1,
+            col=10,
+            title='Room: closed',
+            type='room')
 
+        index = self.write_dataframe(
+            df=crooms - erooms,
+            ws=worksheet,
+            row=index+1,
+            col=20,
+            title='Room difference',
+            type='room')
 
+        # Price
+        cprice = self.make_time_series(cdata, 'gprice')
+        eprice = self.make_time_series(edata, 'gprice')
 
-        data2 = data.set_index('edate')
-        index = self.write_dataframe(df=data2.groupby([pd.TimeGrouper("M"), 'grooms']).rooms.count().reindex(sort_index, level=1).unstack(0),
-                                     worksheet=worksheet,
-                                     row=30,
-                                     col=10,
-                                     title='Room: Bestandsentwicklung an inserierten Mietwohnungen',
-                                     type='room')
+        self.write_dataframe(
+            df=cprice,
+            ws=worksheet,
+            row=index+2,
+            title='Price new',
+            type='price')
 
-        a = data.groupby([pd.TimeGrouper("M"), 'grooms']).rooms.count().reindex(sort_index, level=1).unstack(0) - data2.groupby([pd.TimeGrouper("M"), 'grooms']).rooms.count().reindex(sort_index, level=1).unstack(0)
-        index = self.write_dataframe(df=a,
-                                     worksheet=worksheet,
-                                     row=30,
-                                     col=20,
-                                     title='Room: Bestandsentwicklung an inserierten Mietwohnungen',
-                                     type='room')
+        self.write_dataframe(
+            df=eprice,
+            ws=worksheet,
+            row=index+2,
+            col=10,
+            title='Price closed',
+            type='price')
 
-        index = self.write_dataframe(df=data2.groupby([pd.TimeGrouper("M"), 'gprice']).price.count().reindex(sort_index, level=1).unstack(0),
-                                     worksheet=worksheet,
-                                     row=index+5,
-                                     col=10,
-                                     title='Price: Bestandsentwicklung an inserierten Mietwohnungen',
-                                     type='price')
+        index = self.write_dataframe(
+            df=cprice - eprice,
+            ws=worksheet,
+            row=index+2,
+            col=20,
+            title='Price Difference',
+            type='price')
 
-        index = self.write_dataframe(df=data2.groupby([pd.TimeGrouper("M"), 'garea']).area.count().reindex(sort_index, level=1).unstack(0),
-                                     worksheet=worksheet,
-                                     row=index+5,
-                                     col=10,
-                                     title='Area: Bestandsentwicklung an inserierten Mietwohnungen',
-                                     type='area')
+        # Area
+        carea = self.make_time_series(cdata, 'garea')
+        earea = self.make_time_series(edata, 'garea')
+        self.write_dataframe(
+            df=carea,
+            ws=worksheet,
+            row=index+2,
+            title='Area new',
+            type='area')
 
-        
-                    
+        self.write_dataframe(
+            df=earea,
+            ws=worksheet,
+            row=index+2,
+            col=10,
+            title='Area close',
+            type='area')
 
+        index = self.write_dataframe(
+            df=carea - earea,
+            ws=worksheet,
+            row=index+2,
+            col=20,
+            title='Area Difference',
+            type='area')
+
+        index += 2
         # Durchschnittliche Wohnungsgrösse (m2)
-
-        self.data['garea'] = self.data.area.apply(group_by_area)
-        darea = self.data.area.quantile([.25, .5, .75])
-        worksheet.write(index, 0, 'Durchschnittliche Wohnungsgrösse (m2)')
+        self.actual_data['garea'] = self.actual_data.area.apply(group_by_area)
+        darea = self.actual_data.area.quantile([.25, .5, .75])
+        worksheet.write(index, 0, 'Durchschnittliche Wohnungsgrösse (m2)', self.formats['h2'])
         worksheet.write(index+1, 0, '0.25')
         worksheet.write(index+1, 1, darea[0.25])
         worksheet.write(index+2, 0, '0.5')
@@ -287,30 +340,36 @@ class ReportGenerator(object):
         worksheet.write(index+3, 1, darea[0.75])
 
         index += 4
-
         quantiles = [.25, .5, .75]
-        mean_rooms = pd.DataFrame({
-            self.location.canton: self.data.loc[self.data.area != 0].groupby('garea').area.quantile(quantiles),
-            self.location.district: self.data.loc[(self.data.area != 0) & (self.data.district_nr == self.location.district_nr)].groupby('garea').area.quantile(quantiles),
-            self.location.plz: self.data.loc[(self.data.area != 0) & (self.data.plz == self.location.plz)].groupby('garea').area.quantile(quantiles)})
 
-        index = self.write_dataframe(df=mean_rooms[self.location.plz].reindex(sort_index, level=0).unstack(1),
-                                     worksheet=worksheet,
-                                     row=index+2,
-                                     title='PLZ Durchschnittliche Wohnungsgrösse (m2)',
-                                     type='area')
+        mean_area = self.build_quantile_data('area', 'garea', quantiles)
 
-        index = self.write_dataframe(df=mean_rooms[self.location.district].reindex(sort_index, level=0).unstack(1),
-                                     worksheet=worksheet,
-                                     row=index+2,
-                                     title='District Durchschnittliche Wohnungsgrösse (m2)',
-                                     type='area')
+        index = self.write_dataframe(
+            df=mean_area[self.location.plz]
+                    .reindex(sort_index, level=0)
+                    .unstack(1),
+            ws=worksheet,
+            row=index+2,
+            title=self.location.plz,
+            type='area')
 
-        index = self.write_dataframe(df=mean_rooms[self.location.canton].reindex(sort_index, level=0).unstack(1),
-                                     worksheet=worksheet,
-                                     row=index+2,
-                                     title='Canton Durchschnittliche Wohnungsgrösse (m2)',
-                                     type='area')
+        index = self.write_dataframe(
+            df=mean_area[self.location.district]
+                    .reindex(sort_index, level=0)
+                    .unstack(1),
+            ws=worksheet,
+            row=index+2,
+            title=self.location.district,
+            type='area')
+
+        index = self.write_dataframe(
+            df=mean_area[self.location.canton]
+                    .reindex(sort_index, level=0)
+                    .unstack(1),
+            ws=worksheet,
+            row=index+2,
+            title=self.location.canton,
+            type='area')
 
     def make_price_analysis(self):
         sheetname = 'Preisanalyse'
@@ -319,9 +378,8 @@ class ReportGenerator(object):
         worksheet.write('A1', 'Preisanalyse', self.formats['title'])
 
         index = 2
-
-        dprice = self.data.loc[self.data.price != 0].price.quantile([.25, .5, .75])
-        worksheet.write(index, 0, 'Durchschnittliche Mietpreisniveau allgemein')
+        dprice = self.actual_data.loc[self.actual_data.price != 0].price.quantile([.25, .5, .75])
+        worksheet.write(index, 0, 'Mietpreisniveau allgemein', self.formats['h2'])
         worksheet.write(index+1, 0, '0.25')
         worksheet.write(index+1, 1, dprice[0.25])
         worksheet.write(index+2, 0, '0.5')
@@ -330,68 +388,193 @@ class ReportGenerator(object):
         worksheet.write(index+3, 1, dprice[0.75])
 
         index += 4
-        quantiles = [.25, .5, .75]
-        mean_prices = pd.DataFrame({
-            self.location.canton: self.data.loc[self.data.price != 0].groupby('gprice').price.quantile(quantiles),
-            self.location.district: self.data.loc[(self.data.price != 0) & (self.data.district_nr == self.location.district_nr)].groupby('gprice').price.quantile(quantiles),
-            self.location.plz: self.data.loc[(self.data.price != 0) & (self.data.plz == self.location.plz)].groupby('gprice').price.quantile(quantiles)})
+        quantiles = [.5]
+        index = self.write_dataframe(
+            df=self.build_quantile_data('price', 'grooms', quantiles)
+                   .reindex(sort_index, level=0)
+                   .unstack(1),
+            ws=worksheet,
+            row=index+2,
+            title='Room',
+            type='room')
 
-        index = self.write_dataframe(df=mean_prices[self.location.plz].reindex(sort_index, level=0).unstack(1),
-                                     worksheet=worksheet,
-                                     row=index+2,
-                                     title='PLZ Mietpreisniveau allgemein',
-                                     type='price')
+        index = self.write_dataframe(
+            df=self.build_quantile_data('price', 'garea', quantiles)
+                   .reindex(sort_index, level=0)
+                   .unstack(1),
+            ws=worksheet,
+            row=index+2,
+            title='Area',
+            type='area')
 
-        index = self.write_dataframe(df=mean_prices[self.location.district].reindex(sort_index, level=0).unstack(1),
-                                     worksheet=worksheet,
-                                     row=index+2,
-                                     title='District Mietpreisniveau allgemein',
-                                     type='price')
+        # Price per square meter
+        self.actual_data['price_per_m'] = self.actual_data.price / self.actual_data.area
+        index = self.write_dataframe(
+            df=self.build_quantile_data('price_per_m', 'grooms', quantiles)
+                   .reindex(sort_index, level=0)
+                   .unstack(1),
+            ws=worksheet,
+            row=index+2,
+            title='Price per m',
+            type='room')
 
-        index = self.write_dataframe(df=mean_prices[self.location.canton].reindex(sort_index, level=0).unstack(1),
-                                     worksheet=worksheet,
-                                     row=index+2,
-                                     title='Canton Mietpreisniveau allgemein',
-                                     type='price')
+        self.historical_data['price_per_m'] = self.historical_data.price / self.historical_data.loc[self.historical_data.area != 0].area
+        cdata = self.historical_data.set_index('cdate')
+        crooms = self.make_time_seriesq(cdata, 'grooms')
+        carea = self.make_time_seriesq(cdata, 'garea')
+        index = self.write_dataframe(
+            df=crooms,
+            ws=worksheet,
+            row=index+2,
+            title='Preisentwicklung',
+            type='room')
 
+        index = self.write_dataframe(
+            df=carea,
+            ws=worksheet,
+            row=index+2,
+            title='Preis',
+            type='area')
+
+    def make_timePeriod(self):
+        import numpy as np
+        self.actual_data['duration'] = self.actual_data.edate - self.actual_data.cdate
+        worksheet = self.workbook.add_worksheet('Insertionsdauer')
+        worksheet.set_row(0, 30)
+        worksheet.write('A1', 'Insertionsdauer', self.formats['title'])
+
+        index = 2
+        dduration = self.actual_data.duration.quantile([.25, .5, .75])
+        worksheet.write(index, 0, 'Insertionsdauer', self.formats['h2'])
+        worksheet.write(index+1, 0, '0.25')
+        worksheet.write(index+1, 1, dduration[0.25] / (np.timedelta64(1, 'h') * 24) )
+        worksheet.write(index+2, 0, '0.5')
+        worksheet.write(index+2, 1, dduration[0.5]/(np.timedelta64(1, 'h') * 24))
+        worksheet.write(index+3, 0, '0.75')
+        worksheet.write(index+3, 1, dduration[0.75]/(np.timedelta64(1, 'h') * 24))
+
+        index = 7
+        index = self.write_dataframe(
+            df=self.build_tquantile_data('duration', 'grooms', 0.5).reindex(sort_index),
+            ws=worksheet,
+            row=index,
+            title='Room',
+            type='room')
+
+        index = self.write_dataframe(
+            df=self.build_tquantile_data('duration', 'gprice', 0.5).reindex(sort_index),
+            ws=worksheet,
+            row=index+2,
+            title='Price',
+            type='price')
+
+        index = self.write_dataframe(
+            df=self.build_tquantile_data('duration', 'garea', 0.5).reindex([1, 2, 3 ,4, 5, 0]),
+            ws=worksheet,
+            row=index+2,
+            title='Area',
+            type='area')
 
     def finish(self):
         self.workbook.close()
 
-    def write_dataframe(self, df, worksheet, row=0, col=0, title=None, type=None, format=None):
+    def write_dataframe(self, df, ws, row=0, col=0, title=None, type=None, format=None, overwriteHeaders=None):
         """
         Helper method to write a dataframe to an excel worksheet
         """
+        # Write title if we have a title
         if title:
-            worksheet.write(row, col, '{}'.format(title), self.formats['h3'])
+            ws.write(row, col, '{}'.format(title), self.formats['h3'])
             row += 1
+
+        # Write headers
+        # Normally we would have a type and with this type we print the correct header.
+        # But it is also possible to give no type and overwrite the headers
         if type:
             for i in range(0, len(df.index)):
-                worksheet.write(row, col+i+1, headers[type][df.index[i]])
+                ws.write(row, col+i+1, headers[type][df.index[i]])
             row += 1
+
+        elif overwriteHeaders:
+            for i in range(0, len(overwriteHeaders)):
+                ws.write(row, col+i+1, overwriteHeaders[i])
+            row += 1
+
+        # Write down the data
         for i in range(df.shape[1]):
-            worksheet.write(row+i, col, '{}'.format(df.keys()[i]))
+            if isinstance(df.keys()[i], tuple):
+                ws.write(row+i, col, '{}'.format(df.keys()[i][0]))
+            else:
+                 ws.write(row+i, col, '{}'.format(df.keys()[i]))
             df[df.keys()[i]] = df[df.keys()[i]].fillna(0)
             for j in range(df.shape[0]):
-                worksheet.write(row+i, col+j+1, df[df.keys()[i]][df.index[j]], format)
+                ws.write(row+i, col+j+1, df[df.keys()[i]][df.index[j]], format)
 
         return row + df.shape[1]
 
     def build_percent_data_frame(self, name, group):
         return pd.DataFrame({
-            self.location.canton: self.data.loc[self.data[name] != 0]
-                                           .groupby(group)[name]
-                                           .count() / len(self.data.loc[self.data[name] != 0]),
+            self.location.canton:
+                self.actual_data.loc[self.actual_data[name] != 0]
+                    .groupby(group)[name]
+                    .count() / len(self.actual_data.loc[self.actual_data[name] != 0]),
 
-            self.location.district: self.data.loc[(self.data[name] != 0) &
-                                                  (self.data.district_nr == self.location.district_nr)]
-                                             .groupby(group)[name]
-                                             .count() / len(self.data.loc[(self.data[name] != 0) &
-                                                                          (self.data.district_nr == self.location.district_nr)]),
+            self.location.district:
+                self.actual_data.loc[(self.actual_data[name] != 0) &
+                                     (self.actual_data.district_nr == self.location.district_nr)]
+                    .groupby(group)[name]
+                    .count() / len(self.actual_data.loc[(self.actual_data[name] != 0) &
+                                                        (self.actual_data.district_nr == self.location.district_nr)]),
 
-            self.location.plz: self.data.loc[(self.data[name] != 0) &
-                                             (self.data.plz == 4103)]
-                                        .groupby(group)[name]
-                                        .count() / len(self.data.loc[(self.data[name] != 0) &
-                                                                     (self.data.plz == self.location.plz)])
+            self.location.plz:
+                self.actual_data.loc[(self.actual_data[name] != 0) &
+                                     (self.actual_data.plz == 4103)]
+                    .groupby(group)[name]
+                    .count() / len(self.actual_data.loc[(self.actual_data[name] != 0) &
+                                                        (self.actual_data.plz == self.location.plz)])
         })
+
+    def build_quantile_data(self, name, group, quantiles=[]):
+        return pd.DataFrame({
+            self.location.canton:
+                self.actual_data.loc[self.actual_data[name] != 0]
+                    .groupby(group)[name]
+                    .quantile(quantiles),
+
+            self.location.district:
+                self.actual_data.loc[(self.actual_data[name] != 0) &
+                                     (self.actual_data.district_nr == self.location.district_nr)]
+                    .groupby(group)[name]
+                    .quantile(quantiles),
+
+            self.location.plz:
+                self.actual_data.loc[(self.actual_data[name] != 0) &
+                                     (self.actual_data.plz == self.location.plz)]
+                    .groupby(group)[name]
+                    .quantile(quantiles)
+        })
+
+
+    def build_tquantile_data(self, name, group, quantiles=[]):
+        return pd.DataFrame({
+            self.location.canton:
+                self.actual_data
+                    .groupby(group)[name]
+                    .quantile(quantiles),
+
+            self.location.district:
+                self.actual_data.loc[self.actual_data.district_nr == self.location.district_nr]
+                    .groupby(group)[name]
+                    .quantile(quantiles),
+
+            self.location.plz:
+                self.actual_data.loc[self.actual_data.plz == self.location.plz]
+                    .groupby(group)[name]
+                    .quantile(quantiles)
+        })
+
+    def make_time_series(self, df, group):
+        return df.groupby([pd.TimeGrouper("M"), group])[group].count().reindex(sort_index, level=1).unstack(0)
+
+    def make_time_seriesq(self, df, group):
+        return df.groupby([pd.TimeGrouper("M"), group]).price_per_m.quantile(.5).reindex(sort_index, level=1).unstack(0)

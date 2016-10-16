@@ -7,7 +7,6 @@ from wtforms.validators import DataRequired, Length
 
 
 class ReportForm(Form):
-    current = BooleanField('Aktuell')
     plz = IntegerField('Postleitzahl', validators=[DataRequired()])
     company_name = StringField('Company name')
     notes = TextAreaField('Notes')

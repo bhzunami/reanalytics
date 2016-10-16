@@ -16,7 +16,6 @@ class Report(UserMixin, db.Model):
     notes = db.Column(db.String)
     created = db.Column(db.Date)
     plz = db.Column(db.Integer)
-    current = db.Column(db.Integer)
 
     def __repr__(self):
         return "<(Report: id {}, copany name {}, notes {} created {} plz {} )>".format(self.id,
