@@ -438,7 +438,10 @@ class ReportGenerator(object):
 
     def make_timePeriod(self):
         import numpy as np
-        self.actual_data['duration'] = self.actual_data.edate - self.actual_data.cdate
+        from datetime import date, timedelta
+        twomonthago = date.today() - timedelta(60)
+
+        self.actual_data['duration'] = self.actual_data.loc[self.actual_data.edate <= twomonthago].edate - self.actual_data.loc[self.actual_data.cdate <= twomonthago].cdate
         worksheet = self.workbook.add_worksheet('Insertionsdauer')
         worksheet.set_row(0, 30)
         worksheet.write('A1', 'Insertionsdauer', self.formats['title'])
