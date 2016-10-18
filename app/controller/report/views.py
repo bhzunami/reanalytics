@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-from flask import render_template, current_app, send_from_directory, redirect, url_for, flash
+from flask import render_template, current_app, send_from_directory, redirect, url_for, flash, request
 from flask_login import login_required
 import datetime as dt
 from . import report
@@ -17,8 +17,12 @@ import os
 @report.route('/', methods=['GET'])
 @login_required
 def index():
-    reports = Report.query.all()
-    return render_template('report/main.html', reports=reports)
+    page = request.args.get('page', 1, type=int)
+    pagination = Report.query.order_by(Report.created).paginate(
+      page, per_page=10,
+      error_out=False)
+    reports = pagination.items
+    return render_template('report/main.html', reports=reports, pagination=pagination)
 
 
 @report.route('/create', methods=['GET', 'POST'])
@@ -51,7 +55,7 @@ def create():
     return render_template('report/create.html', form=form)
 
 
-@report.route('/download<int:report_id>', methods=['GET'])
+@report.route('/download/<int:report_id>', methods=['GET'])
 @login_required
 def download(report_id):
     current_app.logger.info("Report PAGE")
@@ -79,5 +83,5 @@ def delete(report_id):
 
     db.session.delete(report)
 
-    flash('Succesfully delte Report', 'success')
+    flash('Succesfully delted report', 'success')
     return redirect(url_for('.index'))

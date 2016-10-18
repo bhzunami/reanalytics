@@ -8,25 +8,22 @@
 
 <div class="slide-content">
   <div class="container">
-
-<h1>This is a test site</h1>
-{% if current_user.is_authenticated %}
-    {{ current_user.name }}
-    <br />
-    {{ user.last_seen }}
-    <br />
-    Permissions:
-    {{ user.role.name }}<br />
-    {{ user.role.permissions }}
-
-    <br />
-    ID
-    {{ user.get_id()}}
-
- {% else %}
-
-{% endif %}
-</div> 
+    <div class="row">
+      <h1>Last generated reports</h1>
+      <div class="col-md-3 col-md-offset-1">.col-md-1</div>
+      <div class="col-md-3">.col-md-1</div>
+      <div class="col-md-3">.col-md-1</div>
+      <div class="col-md-4">.col-md-1</div>
+      <div class="col-md-4">.col-md-1</div>
+      <div class="col-md-4">.col-md-1</div>
+      <div class="col-md-4">.col-md-1</div>
+      <div class="col-md-4">.col-md-1</div>
+      <div class="col-md-4">.col-md-1</div>
+      <div class="col-md-4">.col-md-1</div>
+      <div class="col-md-4">.col-md-1</div>
+      <div class="col-md-4">.col-md-1</div>
+    </div>
+  </div> 
 </div>
 
 {% endblock %}

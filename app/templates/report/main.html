@@ -1,7 +1,8 @@
 {% extends "layout.html" %}
 {% import "bootstrap/wtf.html" as wtf %}
+{% import "_macros.html" as macros %}
 
-{% block title %}Reports{% endblock %}
+{% block title %}All Reports{% endblock %}
 
 {% block page_content %}
 
@@ -35,6 +36,10 @@
         {% endfor %}
     </tbody>
     </table>
+
+    <div class="col-md-5 col-md-offset-4">
+     {{ macros.pagination_widget(pagination, 'report.index')}}
+    </div>
 </div>
 </div>
 

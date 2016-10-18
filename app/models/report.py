@@ -14,7 +14,7 @@ class Report(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True, nullable=False)
     company_name = db.Column(db.String)
     notes = db.Column(db.String)
-    created = db.Column(db.Date)
+    created = db.Column(db.DateTime, server_default=db.func.now())
     plz = db.Column(db.Integer)
 
     def __repr__(self):

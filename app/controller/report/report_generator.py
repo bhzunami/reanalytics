@@ -5,8 +5,12 @@ import datetime as dt
 import pandas as pd
 import os
 
+# To sort the index in the excel file we define a global index
 sort_index = [1, 2, 3, 4, 5, 6, 0]
 
+# We use 0...6 for the header definition to use the
+# same index for every type. This is the translation
+# to write in the excel
 headers = {'room': {
                 0: 'not defined',
                 1: '1-1.5',
@@ -35,6 +39,7 @@ headers = {'room': {
            }
 
 
+# Group functions
 def group_by_rooms(value):
     if value >= 6:
         return 6
@@ -76,10 +81,18 @@ def group_by_area(value):
 class ReportGenerator(object):
 
     def __init__(self, plz, type, year, report_id):
+        """Prepare a new excel file, formats and load the data from the database
+        """
         self.location = Location.query.filter_by(plz=plz).first()
 
-        self.file_name = os.path.join(current_app.config['REPORT_DIR'], 'Report_{}.xls'.format(report_id))
-        self.writer = pd.ExcelWriter(self.file_name, engine='xlsxwriter', options={'nan_inf_to_errors': True})
+        # Create the filename
+        self.file_name = os.path.join(current_app.config['REPORT_DIR'],
+                                      'Report_{}.xls'.format(report_id))
+
+        # Create a writer
+        self.writer = pd.ExcelWriter(self.file_name,
+                                     engine='xlsxwriter',
+                                     options={'nan_inf_to_errors': True})
 
         self.workbook = self.writer.book
 
@@ -154,8 +167,8 @@ class ReportGenerator(object):
         worksheet.write('A18', 'Powered by reanalytic.ch', self.formats['bold'])
 
     def make_quantitive_analysis(self):
-        # import matplotlib.pyplot as plt
-
+        """ Mengenanalyse
+        """
         # Print scatterplot data
         self.write_dataframe(df=self.actual_data[(self.actual_data.price != 0) &
                              (self.actual_data.area != 0) &
@@ -166,6 +179,7 @@ class ReportGenerator(object):
                              title='Data',
                              overwriteHeaders=['area', 'price'])
 
+        # Y1
         sheetname = 'Mengenanalyse'
         worksheet = self.workbook.add_worksheet(sheetname)
         worksheet.set_row(0, 30)
@@ -182,7 +196,6 @@ class ReportGenerator(object):
 
         # Rooms
         # - - - -
-        #self.actual_data.loc[self.actual_data.rooms > 6] = 6
         self.actual_data['grooms'] = self.actual_data.rooms.apply(group_by_rooms)
         rooms = self.build_percent_data_frame('rooms', 'grooms')
         index = 5
@@ -232,6 +245,7 @@ class ReportGenerator(object):
                         .count().price)
         index += 2
 
+        # Y2
         # =======================================================================
         # Natural growth:
         # =======================================================================
@@ -248,6 +262,7 @@ class ReportGenerator(object):
         edata = self.historical_data.set_index('edate')
 
         # Rooms
+        # - - - -
         crooms = self.make_time_series(cdata, 'grooms')
         erooms = self.make_time_series(edata, 'grooms')
 
@@ -275,6 +290,7 @@ class ReportGenerator(object):
             type='room')
 
         # Price
+        # - - - -
         cprice = self.make_time_series(cdata, 'gprice')
         eprice = self.make_time_series(edata, 'gprice')
 
@@ -302,6 +318,7 @@ class ReportGenerator(object):
             type='price')
 
         # Area
+        # - - - -
         carea = self.make_time_series(cdata, 'garea')
         earea = self.make_time_series(edata, 'garea')
         self.write_dataframe(
@@ -328,6 +345,8 @@ class ReportGenerator(object):
             type='area')
 
         index += 2
+
+        # Y3
         # Durchschnittliche Wohnungsgrösse (m2)
         self.actual_data['garea'] = self.actual_data.area.apply(group_by_area)
         darea = self.actual_data.area.quantile([.25, .5, .75])
@@ -371,7 +390,10 @@ class ReportGenerator(object):
             title=self.location.canton,
             type='area')
 
+    # Y4
     def make_price_analysis(self):
+        """ Preisanalyse
+        """
         sheetname = 'Preisanalyse'
         worksheet = self.workbook.add_worksheet(sheetname)
         worksheet.set_row(0, 30)
@@ -407,8 +429,9 @@ class ReportGenerator(object):
             title='Area',
             type='area')
 
+        # Y5
         # Price per square meter
-        self.actual_data['price_per_m'] = self.actual_data.price / self.actual_data.area
+        self.actual_data['price_per_m'] = self.actual_data.price / self.actual_data.loc[self.actual_data.area != 0].area
         index = self.write_dataframe(
             df=self.build_quantile_data('price_per_m', 'grooms', quantiles)
                    .reindex(sort_index, level=0)
@@ -418,10 +441,11 @@ class ReportGenerator(object):
             title='Price per m',
             type='room')
 
+        # Entwicklung des Mietpreisniveaus
         self.historical_data['price_per_m'] = self.historical_data.price / self.historical_data.loc[self.historical_data.area != 0].area
         cdata = self.historical_data.set_index('cdate')
-        crooms = self.make_time_seriesq(cdata, 'grooms')
-        carea = self.make_time_seriesq(cdata, 'garea')
+        crooms = self.make_time_seriesq(cdata, 'grooms', 'price_per_m')
+        carea = self.make_time_seriesq(cdata, 'garea', 'price_per_m')
         index = self.write_dataframe(
             df=crooms,
             ws=worksheet,
@@ -436,7 +460,11 @@ class ReportGenerator(object):
             title='Preis',
             type='area')
 
+    # Y7
     def make_timePeriod(self):
+        """
+        Insertionsdauer
+        """
         import numpy as np
         from datetime import date, timedelta
         twomonthago = date.today() - timedelta(60)
@@ -478,7 +506,45 @@ class ReportGenerator(object):
             title='Area',
             type='area')
 
+        # Y8
+        # Von 2015
+        index += 2
+        self.historical_data['duration'] = self.historical_data.loc[self.historical_data.edate <= twomonthago].edate - self.historical_data.loc[self.historical_data.cdate <= twomonthago].cdate
+
+        dduration = self.historical_data.duration.quantile([.25, .5, .75])
+        worksheet.write(index, 0, 'Insertionsdauer ab 2015', self.formats['h2'])
+        worksheet.write(index+1, 0, '0.25')
+        worksheet.write(index+1, 1, dduration[0.25] / (np.timedelta64(1, 'h') * 24))
+        worksheet.write(index+2, 0, '0.5')
+        worksheet.write(index+2, 1, dduration[0.5]/(np.timedelta64(1, 'h') * 24))
+        worksheet.write(index+3, 0, '0.75')
+        worksheet.write(index+3, 1, dduration[0.75]/(np.timedelta64(1, 'h') * 24))
+        index += 3
+        cdata = self.historical_data.set_index('cdate')
+        crooms = self.make_time_seriesq(cdata, 'grooms', 'duration')
+        cprice = self.make_time_seriesq(cdata, 'gprice', 'duration')
+        carea = self.make_time_seriesq(cdata, 'garea', 'duration')
+        index = self.write_dataframe(
+            df=crooms,
+            ws=worksheet,
+            row=index+2,
+            title='Entwicklung insertions dauer',
+            type='room')
+
+        index = self.write_dataframe(
+            df=cprice,
+            ws=worksheet,
+            row=index+2,
+            type='price')
+
+        index = self.write_dataframe(
+            df=carea,
+            ws=worksheet,
+            row=index+2,
+            type='area')
+
     def finish(self):
+        # Close the workbook
         self.workbook.close()
 
     def write_dataframe(self, df, ws, row=0, col=0, title=None, type=None, format=None, overwriteHeaders=None):
@@ -497,7 +563,7 @@ class ReportGenerator(object):
             for i in range(0, len(df.index)):
                 ws.write(row, col+i+1, headers[type][df.index[i]])
             row += 1
-
+        # If really nessessery you can overwrite the headers
         elif overwriteHeaders:
             for i in range(0, len(overwriteHeaders)):
                 ws.write(row, col+i+1, overwriteHeaders[i])
@@ -508,7 +574,7 @@ class ReportGenerator(object):
             if isinstance(df.keys()[i], tuple):
                 ws.write(row+i, col, '{}'.format(df.keys()[i][0]))
             else:
-                 ws.write(row+i, col, '{}'.format(df.keys()[i]))
+                ws.write(row+i, col, '{}'.format(df.keys()[i]))
             df[df.keys()[i]] = df[df.keys()[i]].fillna(0)
             for j in range(df.shape[0]):
                 ws.write(row+i, col+j+1, df[df.keys()[i]][df.index[j]], format)
@@ -516,6 +582,9 @@ class ReportGenerator(object):
         return row + df.shape[1]
 
     def build_percent_data_frame(self, name, group):
+        """ Build dataframe on plz/location/canton
+        and calculate the percentage for this
+        """
         return pd.DataFrame({
             self.location.canton:
                 self.actual_data.loc[self.actual_data[name] != 0]
@@ -538,6 +607,14 @@ class ReportGenerator(object):
         })
 
     def build_quantile_data(self, name, group, quantiles=[]):
+        """Create Dataframe for plz/location/canton as key and
+        calculate the quantile for the name
+        If you are not dealing with timeseries use this function!
+
+        :param name:      the attribute name you want the quantiles
+        :param group:     which attribute should be grouped
+        :param quantiles: a list of floats for qunatile
+        """
         return pd.DataFrame({
             self.location.canton:
                 self.actual_data.loc[self.actual_data[name] != 0]
@@ -557,19 +634,28 @@ class ReportGenerator(object):
                     .quantile(quantiles)
         })
 
-
     def build_tquantile_data(self, name, group, quantiles=[]):
+        """Create Dataframe for plz/location/canton as key and
+        calculate the quantile for the name
+        This function deals with timeseries and for that we can not use
+        the [data != 0] cause timeseries can not be used for that
+
+        :param name:      the attribute name you want the quantiles
+        :param group:     which attribute should be grouped
+        :param quantiles: a list of floats for qunatile
+        """
         return pd.DataFrame({
+            # Canton
             self.location.canton:
                 self.actual_data
                     .groupby(group)[name]
                     .quantile(quantiles),
-
+            # District
             self.location.district:
                 self.actual_data.loc[self.actual_data.district_nr == self.location.district_nr]
                     .groupby(group)[name]
                     .quantile(quantiles),
-
+            # Plz
             self.location.plz:
                 self.actual_data.loc[self.actual_data.plz == self.location.plz]
                     .groupby(group)[name]
@@ -577,7 +663,14 @@ class ReportGenerator(object):
         })
 
     def make_time_series(self, df, group):
-        return df.groupby([pd.TimeGrouper("M"), group])[group].count().reindex(sort_index, level=1).unstack(0)
+        """ Build timeseries if a timeseris is a index you can
+        group with pd.TimeGrouper("M")
+        """
+        return df.groupby([pd.TimeGrouper("M"),
+                           group])[group].count().reindex(sort_index,
+                                                          level=1).unstack(0)
 
-    def make_time_seriesq(self, df, group):
-        return df.groupby([pd.TimeGrouper("M"), group]).price_per_m.quantile(.5).reindex(sort_index, level=1).unstack(0)
+    def make_time_seriesq(self, df, group, attribute):
+        return df.groupby([pd.TimeGrouper("M"),
+                           group])[attribute].quantile(.5).reindex(sort_index,
+                                                                   level=1).unstack(0)

@@ -1,14 +1,11 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-
 from flask import Flask
 from flask_assets import Environment, Bundle
 from flask_bootstrap import Bootstrap
 from flask_login import LoginManager
 from flask_sqlalchemy import SQLAlchemy
 from flask_socketio import SocketIO
-
-
 from config import config
 import os
 from celery import Celery
@@ -78,20 +75,20 @@ def create_app(config_name):
         pass
 
     # Configure the blueprints
-    from .controller.main import main as main_blueprint
-    app.register_blueprint(main_blueprint)
+    # from .controller.main import main as main_blueprint
+    # app.register_blueprint(main_blueprint)
+
+    from .controller.report import report as report_blueprint
+    app.register_blueprint(report_blueprint)
 
     from .controller.xml_import import xml_import as xml_import_blueprint
     app.register_blueprint(xml_import_blueprint, url_prefix='/import')
 
-    from .controller.report import report as report_blueprint
-    app.register_blueprint(report_blueprint, url_prefix='/report')
-
     from .controller.auth import auth as auth_blueprint
     app.register_blueprint(auth_blueprint, url_prefix='/auth')
 
-
     return app
+
 
 # CELERY
 def create_celery(app):

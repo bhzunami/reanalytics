@@ -17,7 +17,10 @@ class File(UserMixin, db.Model):
     imported = db.Column(db.Date)
     error = db.Column(db.Boolean)
     error_message = db.Column(db.String)
-
+    created = db.Column(db.DateTime, server_default=db.func.now())
 
     def __repr__(self):
-        return "<(File: id {}, name {}, path {} imported {} )>".format(self.id, self.name, self.path, self.imported)
+        return "<(File: id {}, name {}, path {} imported {} )>".format(self.id,
+                                                                       self.name,
+                                                                       self.path,
+                                                                       self.imported)

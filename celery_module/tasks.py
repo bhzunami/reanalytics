@@ -1,5 +1,4 @@
 from manage import celery
-import json
 import os
 from requests import post
 import xml.etree.ElementTree as ET
@@ -31,6 +30,7 @@ class FTPError(Exception):
 
         server.sendmail(sender, celery.conf.TO, "{}".format(msg))
         server.quit()
+
 
 @celery.task
 def import_xml(file_id, strongest_site_id, user_id=None, url=None):
@@ -149,7 +149,10 @@ def import_xml(file_id, strongest_site_id, user_id=None, url=None):
         data['current'] = len(ads)
         post(url, json=data)
 
-    AnalyticView.refresh()
+    try:
+        AnalyticView.refresh()
+    except AttributeError:
+        print("No materialized view!")
 
 
 @celery.task
@@ -158,12 +161,11 @@ def download_file(url, user, password, filename, dest, strongest_site_id):
     Download a specific file. If the file is already downloaded ask the user if the file shoule be downloaded again
     """
     from ftplib import FTP
-    from datetime import datetime
+    from datetime import date
     from app.models import File
     from app import db
 
-    date = datetime.now()
-    name = '{}-{}-{}.xml'.format(date.year, date.month, date.day)
+    name = '{}.xml'.format(date.today())
     dest = '{}'.format(os.path.join(dest, name))
     f = File(name=name, path=dest)
 

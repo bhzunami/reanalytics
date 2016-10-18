@@ -41,8 +41,7 @@ function start_import_xml_file(button) {
 
 
 $(document).ready(function(){
-
-  socket = io.connect('https://' + document.domain + ':' + location.port + '/events');
+  socket = io.connect(document.location.origin + '/events');
 
   socket.on('connect', function() {
     console.log("on connect " +USERID);

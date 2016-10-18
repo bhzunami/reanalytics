@@ -19,13 +19,13 @@ migrate = Migrate(app, db)
 
 
 def check_file_name(filename):
-    print(filename)
     from dateutil.parser import parse
     try:
         parse(filename)
         return True
     except ValueError:
         return False
+
 
 def make_shell_context():
     """
@@ -64,8 +64,7 @@ def import_file(folder):
     import os
     files = [f for f in os.listdir(folder) if check_file_name(os.path.splitext(f)[0])]
     print("Found {} files for import".format(len(files)))
-    for file in files:
-        print(os.path.abspath(file))
+    for file in sorted(files):
         f = File(name=file, path=os.path.abspath(file))
         # Store file
         db.session.add(f)
@@ -73,13 +72,20 @@ def import_file(folder):
 
         # Import file
         print("Start import file {} with id {}".format(file, f.id))
-        from celery_module.tasks import import_xml
-        import_xml.delay(f.id, app.config['STRONGEST_SITE_ID'])
+        #from celery_module.tasks import import_xml
+        #import_xml.delay(f.id, app.config['STRONGEST_SITE_ID'])
 
 
 @manager.command
 def run():
     socketio.run(app)
+
+
+@manager.command
+def down():
+    from celery_module.tasks import download_file
+    download_file.delay('server36.cyon.ch', 'niggi@studrat.ch', 'st-benno', 'allesralle.xml', 'data', 36)
+
 
 if __name__ == '__main__':
     manager.run()

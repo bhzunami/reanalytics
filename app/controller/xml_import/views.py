@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-from flask import render_template, jsonify, current_app, request, redirect, url_for
+from flask import render_template, current_app, request, redirect, url_for
 from werkzeug.utils import secure_filename
 import os
 from flask_login import current_user, login_required
@@ -10,11 +10,16 @@ from .forms import UploadForm
 from ...models import File, User
 from ... import db
 
+
 @xml_import.route('/', methods=['GET'])
 @login_required
 def get_imported_files():
-    files = File.query.limit(30)
-    return render_template('xml_import/main.html', files=files)
+    page = request.args.get('page', 1, type=int)
+    pagination = File.query.order_by(File.created).paginate(
+      page, per_page=10,
+      error_out=False)
+    files = pagination.items
+    return render_template('xml_import/main.html', files=files, pagination=pagination)
 
 
 @xml_import.route('/upload', methods=['GET', 'POST'])
@@ -32,11 +37,13 @@ def upload():
             db.session.add(f)
             db.session.commit()
 
-
             # Import file
             from celery_module.tasks import import_xml
-            import_xml.delay(f.id, current_app.config['STRONGEST_SITE_ID'], user_id=current_user.id,
-                             url=url_for('xml_import.update_client', _external=True))
+            import_xml.delay(f.id,
+                             current_app.config['STRONGEST_SITE_ID'],
+                             user_id=current_user.id,
+                             url=url_for('xml_import.update_client',
+                             _external=True))
 
         return redirect(url_for('.get_imported_files'))
 

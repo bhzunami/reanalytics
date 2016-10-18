@@ -12,7 +12,6 @@ from ... import db
 @main.route('/', methods=['GET'])
 @login_required
 def index():
-    current_app.logger.info("START PAGE")
     return render_template('index.html', user=current_user)
 
 
