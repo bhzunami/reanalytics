@@ -545,6 +545,17 @@ class ReportGenerator(object):
 
     def finish(self):
         # Close the workbook
+        # Write all datas to workbook just in case:
+        worksheet = self.workbook.add_worksheet('actual_data')
+        self.write_dataframe(df=self.actual_data.transpose(),
+                             ws=worksheet,
+                             overwriteHeaders=self.actual_data.keys().values.tolist())
+
+        worksheet = self.workbook.add_worksheet('historical_data')
+        self.write_dataframe(df=self.historical_data.transpose(),
+                             ws=worksheet,
+                             overwriteHeaders=self.historical_data.keys().values.tolist())
+
         self.workbook.close()
 
     def write_dataframe(self, df, ws, row=0, col=0, title=None, type=None, format=None, overwriteHeaders=None):
