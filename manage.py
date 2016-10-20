@@ -5,7 +5,7 @@
 from __future__ import absolute_import
 import os
 from app import create_app, create_celery, db, socketio
-from app.models import User, Role, Permission, Location, Canton, District, Ad, AnalyticView, File
+from app.models import User, Role, Permission, Location, Canton, District, Ad, File
 from flask_script import Manager, Shell, Server
 from flask_migrate import Migrate, MigrateCommand
 from flask_assets import ManageAssets
@@ -60,6 +60,13 @@ def initialize():
 
 
 @manager.command
+def upgrade():
+    from flask_migrate import upgrade
+    upgrade()
+    db.create_all()  # Create the materialized view
+
+
+@manager.command
 def import_file(folder):
     import os
     files = [f for f in os.listdir(folder) if check_file_name(os.path.splitext(f)[0])]
@@ -72,19 +79,13 @@ def import_file(folder):
 
         # Import file
         print("Start import file {} with id {}".format(file, f.id))
-        #from celery_module.tasks import import_xml
-        #import_xml.delay(f.id, app.config['STRONGEST_SITE_ID'])
+        from celery_module.tasks import import_xml
+        import_xml.delay(f.id, app.config['STRONGEST_SITE_ID'])
 
 
 @manager.command
 def run():
     socketio.run(app)
-
-
-@manager.command
-def down():
-    from celery_module.tasks import download_file
-    download_file.delay('server36.cyon.ch', 'niggi@studrat.ch', 'st-benno', 'allesralle.xml', 'data', 36)
 
 
 if __name__ == '__main__':

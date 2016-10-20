@@ -27,6 +27,7 @@ class User(UserMixin, db.Model):
     websocket_id = db.Column(db.String(64))
     email = db.Column(db.String(64), unique=True, index=True)
     password_hash = db.Column(db.String(128))
+    created = db.Column(db.DateTime, server_default=db.func.now())
     role_id = db.Column(db.Integer, db.ForeignKey('roles.id'))
 
     def __init__(self, **kwargs):

@@ -1,10 +1,5 @@
-# materialized_view_factory.py
-# example for use with Flask-SQLAlchemy
-
 # Accompanying blog post:
 # http://www.jeffwidman.com/blog/847/
-
-# Many thanks to Mike Bayer (@zzzeek) for his help.
 
 from sqlalchemy.ext import compiler
 from sqlalchemy.schema import DDLElement
@@ -17,21 +12,17 @@ class CreateView(DDLElement):
         self.selectable = selectable
 
 
-
 @compiler.compiles(CreateView)
 def compileView(element, compiler, **kw):
-    # Could use "CREATE OR REPLACE MATERIALIZED VIEW..."
-    # but I'd rather have noisy errors
     return 'CREATE OR REPLACE VIEW %s AS %s' % (
         element.name,
         compiler.sql_compiler.process(element.selectable, literal_binds=True),
     )
 
 
-
 def create_view(name, selectable, metadata=db.metadata):
-    _mt = db.MetaData() # temp metadata just for initial Table object creation
-    t = db.Table(name, _mt) # the actual mat view class is bound to db.metadata
+    _mt = db.MetaData()      # temp metadata just for initial Table object creation
+    t = db.Table(name, _mt)  # the actual mat view class is bound to db.metadata
     for c in selectable.c:
         t.append_column(db.Column(c.name, c.type, primary_key=c.primary_key))
 
@@ -50,6 +41,7 @@ def create_view(name, selectable, metadata=db.metadata):
         db.DDL('DROP VIEW IF EXISTS ' + name)
         )
     return t
+
 
 class View(db.Model):
     __abstract__ = True

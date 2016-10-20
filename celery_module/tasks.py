@@ -2,8 +2,6 @@ from manage import celery
 import os
 from requests import post
 import xml.etree.ElementTree as ET
-
-
 from celery.utils.log import get_task_logger
 
 logger = get_task_logger(__name__)
@@ -37,14 +35,16 @@ def import_xml(file_id, strongest_site_id, user_id=None, url=None):
     """
     Import data from xml file into our ads database
     :param file_id:            The id of the downloaded file
-    :param strongest_site_id:  The id of the company which we do not overwrite if we have multiple entries of the
-    same property
-    :param user_id:             The user id. Should only be set when the user startet the import from hand
+    :param strongest_site_id:  The id of the company which we do not overwrite 
+                               if we have multiple entries of the
+                               same property
+    :param user_id:            The user id. Should only be set when the user
+                               startet the import from hand
     :param url:                The url to send the update
     :return:
     """
     import datetime
-    from app.models import Time, Location, Ad, File, AnalyticView
+    from app.models import Time, Location, Ad, File
     from app import db
 
     logger.info("Start importing file")
@@ -57,8 +57,16 @@ def import_xml(file_id, strongest_site_id, user_id=None, url=None):
         return
 
     logger.debug("Read XML file with id {}".format(xml_file.path))
-    tree = ET.parse(xml_file.path)
-    ads = tree.getroot()
+    try:
+        tree = ET.parse(xml_file.path)
+        ads = tree.getroot()
+    except Exception as e:
+        logger.error("Could not read XML file " + e)
+        xml_file.error = True
+        xml_file.error_message = "{}".format(e)
+        db.session.add(xml_file)
+        db.session.commit()
+        return
 
     # insert the actual date:
     logger.info("Prepare Time object")
@@ -66,8 +74,12 @@ def import_xml(file_id, strongest_site_id, user_id=None, url=None):
     if t is None:
         business_day = True if today.weekday() < 5 else False
         quarter = (today.month - 1) // 3 + 1
-        t = Time(day=today.day, month=today.month, year=today.year, business_day=business_day,
-                 quarter=quarter, date=today)
+        t = Time(day=today.day,
+                 month=today.month,
+                 year=today.year,
+                 business_day=business_day,
+                 quarter=quarter,
+                 date=today)
         db.session.add(t)
         db.session.commit()
 
@@ -82,7 +94,10 @@ def import_xml(file_id, strongest_site_id, user_id=None, url=None):
     not_updated_ads = set()
 
     # Prepare once the data dict
-    data = {'userid': user_id, 'file_id': file_id, 'current': None, 'total': len(ads)}
+    data = {'userid': user_id,
+            'file_id': file_id,
+            'current': None,
+            'total': len(ads)}
     logger.info("Start inserting ads")
     for i, ad in enumerate(ads):
         if ad[10] and ad[11].text != strongest_site_id:
@@ -136,8 +151,9 @@ def import_xml(file_id, strongest_site_id, user_id=None, url=None):
                 post(url, json=data)
 
     db.session.commit()
-    logger.info("There are {} ads which were not inserted. {} new and {} updated".format(len(not_updated_ads),
-                                                                                         inserted_ads, updated_ads))
+    logger.info("There are {} ads which were not inserted. "
+                "{} new and {} updated".format(len(not_updated_ads),
+                                               inserted_ads, updated_ads))
 
     # update file
     xml_file.imported = datetime.date.today()
@@ -149,16 +165,12 @@ def import_xml(file_id, strongest_site_id, user_id=None, url=None):
         data['current'] = len(ads)
         post(url, json=data)
 
-    try:
-        AnalyticView.refresh()
-    except AttributeError:
-        print("No materialized view!")
-
 
 @celery.task
 def download_file(url, user, password, filename, dest, strongest_site_id):
     """
-    Download a specific file. If the file is already downloaded ask the user if the file shoule be downloaded again
+    Download a specific file. If the file is already
+    downloaded ask the user if the file shoule be downloaded again
     """
     from ftplib import FTP
     from datetime import date
@@ -204,11 +216,3 @@ def download_file(url, user, password, filename, dest, strongest_site_id):
     # Import file
     import_xml.delay(f.id, strongest_site_id)
     logger.info("Start import the downloaded file")
-
-@celery.task
-def createReport(plz):
-    """
-    Create Report for this place
-    """
-    from app import db
-

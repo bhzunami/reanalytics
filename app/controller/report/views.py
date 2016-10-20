@@ -7,10 +7,8 @@ import datetime as dt
 from . import report
 from .forms import ReportForm
 from .report_generator import ReportGenerator
-from ...models import Report, AnalyticView, Location
+from ...models import Report
 from ... import db
-import pandas as pd
-import xlsxwriter
 import os
 
 
@@ -40,17 +38,23 @@ def create():
         db.session.add(report)
         db.session.commit()
 
-        rg = ReportGenerator(form.plz.data, 'Wohnung', 2015, report.id)
-        rg.make_title_sheet()
-        rg.make_quantitive_analysis()
-        rg.make_price_analysis()
-        rg.make_timePeriod()
-        rg.finish()
+        try:
+            rg = ReportGenerator(form.plz.data, 'Wohnung', 2015, report.id)
+            rg.make_title_sheet()
+            rg.make_quantitive_analysis()
+            rg.make_price_analysis()
+            rg.make_timePeriod()
+            rg.finish()
 
-        flash('Succesfully created new report', 'success')
-        return send_from_directory(current_app.config['REPORT_DIR'],
-                                   'Report_{}.xls'.format(report.id),
-                                   as_attachment=True)
+            flash('Succesfully created new report', 'success')
+            return send_from_directory(current_app.config['REPORT_DIR'],
+                                       'Report_{}.xls'.format(report.id),
+                                       as_attachment=True)
+        except Exception as e:
+            flash('Could not generate report', 'danger')
+            current_app.logger.error('Could not generate report {}'.format(e))
+            db.session.delete(report)
+            return render_template('report/create.html', form=form)
 
     return render_template('report/create.html', form=form)
 
