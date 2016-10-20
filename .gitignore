@@ -106,5 +106,4 @@ ENV/
 celerybeat-schedule.db
 data
 logs
-migrations/versions/
 test*
