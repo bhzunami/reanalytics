@@ -67,12 +67,13 @@ def upgrade():
 
 
 @manager.command
-def import_file(folder):
+def import_file():
     import os
-    files = [f for f in os.listdir(folder) if check_file_name(os.path.splitext(f)[0])]
+    import time
+    files = [f for f in os.listdir('data') if check_file_name(os.path.splitext(f)[0])]
     print("Found {} files for import".format(len(files)))
     for file in sorted(files):
-        f = File(name=file, path=os.path.abspath(os.paht.join('data', file)))
+        f = File(name=file, path=os.path.abspath(os.path.join('data', file)))
         # Store file
         db.session.add(f)
         db.session.commit()
@@ -81,7 +82,9 @@ def import_file(folder):
         print("Start import file {} with id {}".format(file, f.id))
         from celery_module.tasks import import_xml
         r = import_xml.apply(f.id, app.config['STRONGEST_SITE_ID'])
-        r.get()
+        while r.status is 'PENDING':
+            print('Importing file {}'.format(f.id))
+            time.sleep(5)
 
 
 @manager.command
