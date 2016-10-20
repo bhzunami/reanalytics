@@ -35,7 +35,7 @@ def make_shell_context():
     <class 'app.User'>
     """
     return dict(app=app, db=db, User=User, Role=Role, Permission=Permission, Location=Location, Canton=Canton,
-                District=District, Ad=Ad, AnalyticView=AnalyticView)
+                District=District, Ad=Ad)
 
 
 manager.add_command("shell", Shell(make_context=make_shell_context))
@@ -81,7 +81,7 @@ def import_file():
         # Import file
         print("Start import file {} with id {}".format(file, f.id))
         from celery_module.tasks import import_xml
-        r = import_xml.apply(f.id, app.config['STRONGEST_SITE_ID'])
+        r = import_xml.delay(f.id, app.config['STRONGEST_SITE_ID'])
         while r.status is 'PENDING':
             print('Importing file {}'.format(f.id))
             time.sleep(5)
