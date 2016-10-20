@@ -72,7 +72,7 @@ def import_file(folder):
     files = [f for f in os.listdir(folder) if check_file_name(os.path.splitext(f)[0])]
     print("Found {} files for import".format(len(files)))
     for file in sorted(files):
-        f = File(name=file, path=os.path.abspath(file))
+        f = File(name=file, path=os.path.abspath(os.paht.join('data', file)))
         # Store file
         db.session.add(f)
         db.session.commit()
@@ -80,7 +80,8 @@ def import_file(folder):
         # Import file
         print("Start import file {} with id {}".format(file, f.id))
         from celery_module.tasks import import_xml
-        import_xml.delay(f.id, app.config['STRONGEST_SITE_ID'])
+        r = import_xml.apply(f.id, app.config['STRONGEST_SITE_ID'])
+        r.get()
 
 
 @manager.command
