@@ -16,9 +16,9 @@ import os
 @login_required
 def index():
     page = request.args.get('page', 1, type=int)
-    pagination = Report.query.order_by(Report.created).paginate(
-      page, per_page=10,
-      error_out=False)
+    pagination = Report.query.order_by(Report.created.desc()).paginate(
+        page, per_page=10,
+        error_out=False)
     reports = pagination.items
     return render_template('report/main.html', reports=reports, pagination=pagination)
 

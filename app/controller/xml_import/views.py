@@ -15,9 +15,9 @@ from ... import db
 @login_required
 def get_imported_files():
     page = request.args.get('page', 1, type=int)
-    pagination = File.query.order_by(File.created).paginate(
-      page, per_page=10,
-      error_out=False)
+    pagination = File.query.order_by(File.created.desc()).paginate(
+        page, per_page=10,
+        error_out=False)
     files = pagination.items
     return render_template('xml_import/main.html', files=files, pagination=pagination)
 
@@ -43,7 +43,7 @@ def upload():
                              current_app.config['STRONGEST_SITE_ID'],
                              user_id=current_user.id,
                              url=url_for('xml_import.update_client',
-                             _external=True))
+                                         _external=True))
 
         return redirect(url_for('.get_imported_files'))
 

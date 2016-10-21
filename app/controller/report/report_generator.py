@@ -11,32 +11,33 @@ sort_index = [1, 2, 3, 4, 5, 6, 0]
 # We use 0...6 for the header definition to use the
 # same index for every type. This is the translation
 # to write in the excel
-headers = {'room': {
-                0: 'not defined',
-                1: '1-1.5',
-                2: '2-2.5',
-                3: '3-3.5',
-                4: '4-4.5',
-                5: '5-5.5',
-                6: '6+'
-            },
-           'price': {
-               0: 'not defined',
-               1: '<1000',
-               2: '1000 - 1499',
-               3: '1500 - 1999',
-               4: '2000 - 2499',
-               5: '2500 - 3000',
-               6: '>=3000'},
-           'area': {
-               0: 'not defined',
-               1: '<50',
-               2: '50 - 99',
-               3: '100 - 149',
-               4: '150 - 199',
-               5: '>= 200',
-               6: 'khjggkjh'}
-           }
+headers = {
+    'room': {
+        0: 'not defined',
+        1: '1-1.5',
+        2: '2-2.5',
+        3: '3-3.5',
+        4: '4-4.5',
+        5: '5-5.5',
+        6: '6+'
+    },
+    'price': {
+        0: 'not defined',
+        1: '<1000',
+        2: '1000 - 1499',
+        3: '1500 - 1999',
+        4: '2000 - 2499',
+        5: '2500 - 3000',
+        6: '>=3000'},
+    'area': {
+        0: 'not defined',
+        1: '<50',
+        2: '50 - 99',
+        3: '100 - 149',
+        4: '150 - 199',
+        5: '>= 200',
+        6: 'khjggkjh'}
+}
 
 
 # Group functions
@@ -118,35 +119,35 @@ class ReportGenerator(object):
         # Select the data from view
         # Actual data means get only ads which are at this time active -> not finished
         self.actual_data = pd.read_sql_query(
-                           db.select([AnalyticView.rooms,
-                                      AnalyticView.price,
-                                      AnalyticView.area,
-                                      AnalyticView.plz,
-                                      AnalyticView.district_nr,
-                                      AnalyticView.cdate,
-                                      AnalyticView.edate])
-                           .where(AnalyticView.canton_nr == self.location.canton_nr)
-                           .where(AnalyticView.type == type)
-                           # .where(AnalyticView.edate == dt.datetime.today()),
-                           .where(AnalyticView.edate == "2016-07-10"),
-                           db.session.bind,
-                           parse_dates=['cdate', 'edate'])
+            db.select([AnalyticView.rooms,
+                       AnalyticView.price,
+                       AnalyticView.area,
+                       AnalyticView.plz,
+                       AnalyticView.district_nr,
+                       AnalyticView.cdate,
+                       AnalyticView.edate])
+            .where(AnalyticView.canton_nr == self.location.canton_nr)
+            .where(AnalyticView.type == type)
+            # .where(AnalyticView.edate == dt.datetime.today()),
+            .where(AnalyticView.edate == "2016-07-10"),
+            db.session.bind,
+            parse_dates=['cdate', 'edate'])
 
         # historical data means all ads from a period of time
         self.historical_data = pd.read_sql_query(
-                               db.select([AnalyticView.rooms,
-                                         AnalyticView.price,
-                                         AnalyticView.area,
-                                         AnalyticView.plz,
-                                         AnalyticView.district_nr,
-                                         AnalyticView.cdate,
-                                         AnalyticView.edate])
-                               .where(AnalyticView.plz == self.location.plz)
-                               .where(AnalyticView.type == type)
-                               .where(AnalyticView.cyear >= year),
-                               db.session.bind,
-                               # index_col=['cdate'],
-                               parse_dates=['cdate', 'edate'])
+            db.select([AnalyticView.rooms,
+                       AnalyticView.price,
+                       AnalyticView.area,
+                       AnalyticView.plz,
+                       AnalyticView.district_nr,
+                       AnalyticView.cdate,
+                       AnalyticView.edate])
+            .where(AnalyticView.plz == self.location.plz)
+            .where(AnalyticView.type == type)
+            .where(AnalyticView.cyear >= year),
+            db.session.bind,
+            # index_col=['cdate'],
+            parse_dates=['cdate', 'edate'])
 
     def make_title_sheet(self):
         """
@@ -500,7 +501,7 @@ class ReportGenerator(object):
             type='price')
 
         index = self.write_dataframe(
-            df=self.build_tquantile_data('duration', 'garea', 0.5).reindex([1, 2, 3 ,4, 5, 0]),
+            df=self.build_tquantile_data('duration', 'garea', 0.5).reindex([1, 2, 3, 4, 5, 0]),
             ws=worksheet,
             row=index+2,
             title='Area',
