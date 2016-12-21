@@ -15,7 +15,7 @@ from ... import db
 @login_required
 def get_imported_files():
     page = request.args.get('page', 1, type=int)
-    pagination = File.query.order_by(File.created).paginate(
+    pagination = File.query.order_by(File.created.desc()).paginate(
       page, per_page=10,
       error_out=False)
     files = pagination.items

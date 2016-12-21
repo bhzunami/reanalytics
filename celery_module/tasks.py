@@ -20,7 +20,7 @@ class FTPError(Exception):
         server.login(celery.conf.SMTP_USER, celery.conf.SMTP_PASSWORD)
         subject = 'Error in importing new XML File'
         sender = celery.conf.SENDER
-        msg = "From: 'Avisum <{sender}>' \r\nTo: 'Sender <{to}>' \r\nSubject: {subject}\r\n{msg}".format(
+        msg = "From: 'Propmatch <{sender}>' \r\nTo: 'Sender <{to}>' \r\nSubject: {subject}\r\n{msg}".format(
             subject=subject,
             sender=sender,
             to=celery.conf.TO,

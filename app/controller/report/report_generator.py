@@ -361,7 +361,7 @@ class ReportGenerator(object):
         index += 4
         quantiles = [.25, .5, .75]
 
-        mean_area = self.build_quantile_data('area', 'garea', quantiles)
+        mean_area = self.build_quantile_data('area', 'grooms', quantiles)
 
         index = self.write_dataframe(
             df=mean_area[self.location.plz]
@@ -370,7 +370,7 @@ class ReportGenerator(object):
             ws=worksheet,
             row=index+2,
             title=self.location.plz,
-            type='area')
+            type='rooms')
 
         index = self.write_dataframe(
             df=mean_area[self.location.district]
@@ -379,7 +379,7 @@ class ReportGenerator(object):
             ws=worksheet,
             row=index+2,
             title=self.location.district,
-            type='area')
+            type='rooms')
 
         index = self.write_dataframe(
             df=mean_area[self.location.canton]
@@ -388,7 +388,7 @@ class ReportGenerator(object):
             ws=worksheet,
             row=index+2,
             title=self.location.canton,
-            type='area')
+            type='rooms')
 
     # Y4
     def make_price_analysis(self):

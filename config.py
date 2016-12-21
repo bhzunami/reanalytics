@@ -22,7 +22,7 @@ class Config:
     DEFAULT_USER_PASSWORD = os.environ.get('DEFAULT_USER_PASSWORD')
 
     # FTP
-    FTP_URL = os.environ.get('FTP_URL', 'server36.cyon.ch')
+    FTP_URL = os.environ.get('FTP_URL', 'propmatch.ch')
     FTP_USER = os.environ.get('FTP_USER')
     FTP_PASSWORD = os.environ.get('FTP_PASSWORD')
     FTP_FILE_NAME = os.environ.get('FTP_FILE_NAME', 'allesralle.xml')
