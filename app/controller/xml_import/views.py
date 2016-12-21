@@ -43,7 +43,7 @@ def upload():
                              current_app.config['STRONGEST_SITE_ID'],
                              user_id=current_user.id,
                              url=url_for('xml_import.update_client',
-                             _external=True))
+                                         _external=True))
 
         return redirect(url_for('.get_imported_files'))
 
