@@ -12,7 +12,7 @@ class Config:
     SQLALCHEMY_COMMIT_ON_TEARDOWN = True
     SQLALCHEMY_TRACK_MODIFICATIONS = False
 
-    # Avisum
+    # Project Properties
     DATA_DIR = os.path.join(BASE_DIR, 'data')
     REPORT_DIR = os.path.join(BASE_DIR, 'reports')
     LOG_DIR = os.path.join(BASE_DIR, 'logs')
@@ -22,7 +22,7 @@ class Config:
     DEFAULT_USER_PASSWORD = os.environ.get('DEFAULT_USER_PASSWORD')
 
     # FTP
-    FTP_URL = os.environ.get('FTP_URL', 'propmatch.ch')
+    FTP_URL = os.environ.get('FTP_URL', '')
     FTP_USER = os.environ.get('FTP_USER')
     FTP_PASSWORD = os.environ.get('FTP_PASSWORD')
     FTP_FILE_NAME = os.environ.get('FTP_FILE_NAME', 'allesralle.xml')
@@ -66,7 +66,6 @@ class DevelopmentConfig(Config):
     ASSETS_DEBUG = True
     DATABASE_USER = os.environ.get('DATABASE_USER', 'nicolas')
     DATABASE_PASSWORD = ''
-    # SQLALCHEMY_DATABASE_URI = 'sqlite:///{}'.format(os.path.join(BASE_DIR, 'avisum.sqlite'))
     SQLALCHEMY_DATABASE_URI = 'postgresql://{}:{}@localhost/reanalytics'.format(DATABASE_USER, DATABASE_PASSWORD)
 
     # Celery
